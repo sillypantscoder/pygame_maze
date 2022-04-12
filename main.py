@@ -3,6 +3,7 @@ import random
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
 ZOOM = 50
 BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 playerpos = [0, 0]
@@ -45,7 +46,7 @@ def addBlock(x: int, y: int) -> None:
 
 def newBlockState() -> int:
 	"""Generates a new block state."""
-	return random.choices([0, 1], weights=[5, 1], k=1)[0]
+	return random.choices([0, 1], weights=[1, 1], k=1)[0]
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
@@ -59,23 +60,23 @@ while running:
 			SCREENSIZE = event.size
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.KEYDOWN:
-			if event.key == pygame.K_w:
+			if event.key == pygame.K_UP:
 				playerMove("up")
-			elif event.key == pygame.K_s:
+			elif event.key == pygame.K_DOWN:
 				playerMove("down")
-			elif event.key == pygame.K_a:
+			elif event.key == pygame.K_LEFT:
 				playerMove("left")
-			elif event.key == pygame.K_d:
+			elif event.key == pygame.K_RIGHT:
 				playerMove("right")
 	# Drawing
-	offset = [(SCREENSIZE[0] / 2) - (ZOOM / 2), (SCREENSIZE[1] / 2) - (ZOOM / 2)]
+	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(WHITE)
 	alreadySeen = []
 	for cell in BOARD:
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
 		if cell["state"] == 0:
-			pygame.draw.rect(screen, BLACK, cellrect, 1)
+			pygame.draw.rect(screen, GRAY, cellrect)
 		if cell["state"] == 1:
 			pygame.draw.rect(screen, BLACK, cellrect)
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
