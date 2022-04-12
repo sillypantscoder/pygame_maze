@@ -7,6 +7,17 @@ BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0,
 playerpos = [0, 0]
 SCREENSIZE = [500, 500]
 
+def playerMove(direction: str) -> None:
+	"""Moves the player in the given direction."""
+	if direction == "up":
+		playerpos[1] -= 1
+	elif direction == "down":
+		playerpos[1] += 1
+	elif direction == "left":
+		playerpos[0] -= 1
+	elif direction == "right":
+		playerpos[0] += 1
+
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
 c = pygame.time.Clock()
@@ -18,6 +29,15 @@ while running:
 		elif event.type == pygame.VIDEORESIZE:
 			SCREENSIZE = event.size
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+		elif event.type == pygame.KEYDOWN:
+			if event.key == pygame.K_w:
+				playerMove("up")
+			elif event.key == pygame.K_s:
+				playerMove("down")
+			elif event.key == pygame.K_a:
+				playerMove("left")
+			elif event.key == pygame.K_d:
+				playerMove("right")
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) - (ZOOM / 2), (SCREENSIZE[1] / 2) - (ZOOM / 2)]
 	screen.fill(WHITE)
