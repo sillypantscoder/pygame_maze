@@ -1,3 +1,4 @@
+from numpy import mat
 import pygame
 import random
 import math
@@ -16,6 +17,7 @@ FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
 playerpos = [0, 0]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
+portalroom = False
 
 def getBlock(x: int, y: int) -> "dict[str, int] | None":
 	"""Returns the block at the given coordinates."""
@@ -50,15 +52,22 @@ def playerMove(direction: str) -> None:
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
-	BOARD.append({"x": x, "y": y, "state": newBlockState()})
+	global portalroom
+	s = newBlockState(x, y)
+	if s == 3: portalroom = True
+	BOARD.append({"x": x, "y": y, "state": s})
 
-def newBlockState() -> int:
+def newBlockState(x: int, y: int) -> int:
 	"""Generates a new block state."""
-	if math.dist(playerpos, [0, 0]) > 10:
+	if math.dist((x, y), (0, 0)) > 60: return random.choices([1, 2, 3], weights=[1, 25, 5], k=1)[0]
+	if math.dist((x, y), (0, 0)) > 10 and not portalroom:
 		return random.choices([0, 1, 2, 3], weights=[30, 22, 0.7, 0.1], k=1)[0]
-	return random.choices([0, 1, 2], weights=[30, 22, 2], k=1)[0]
+	elif math.dist((x, y), (0, 0)) < 4:
+		return random.choices([0, 1, 2], weights=[30, 18, 4], k=1)[0]
+	return random.choices([0, 1, 2], weights=[30, 22, 4], k=1)[0]
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+pygame.key.set_repeat(300, 50)
 
 c = pygame.time.Clock()
 running = True
