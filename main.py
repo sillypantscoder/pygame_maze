@@ -1,13 +1,19 @@
 import pygame
 import random
 
+pygame.font.init()
+
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
+ORANGE = (217, 106, 22)
 ZOOM = 50
 BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
+FONT = pygame.font.SysFont("monospace", 30)
+FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
 playerpos = [0, 0]
-SCREENSIZE = [500, 500]
+SCREENSIZE = [500, 500 + FONTHEIGHT]
+coins = 0
 
 def getBlock(x: int, y: int) -> "dict[str, int] | None":
 	"""Returns the block at the given coordinates."""
@@ -46,7 +52,7 @@ def addBlock(x: int, y: int) -> None:
 
 def newBlockState() -> int:
 	"""Generates a new block state."""
-	return random.choices([0, 1], weights=[1, 1], k=1)[0]
+	return random.choices([0, 1, 2], weights=[30, 20, 2], k=1)[0]
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
@@ -71,7 +77,6 @@ while running:
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(WHITE)
-	alreadySeen = []
 	for cell in BOARD:
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
@@ -79,9 +84,18 @@ while running:
 			pygame.draw.rect(screen, GRAY, cellrect)
 		if cell["state"] == 1:
 			pygame.draw.rect(screen, BLACK, cellrect)
+		if cell["state"] == 2:
+			pygame.draw.rect(screen, GRAY, cellrect)
+			pygame.draw.circle(screen, ORANGE, cellrect.center, int(ZOOM / 4))
+			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1]:
+				cell["state"] = 0
+				coins += 1
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, BLACK, playerrect)
+	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
+	pygame.draw.rect(screen, WHITE, toolbarrect)
+	screen.blit(FONT.render("Coins: " + str(coins), True, BLACK), toolbarrect.topleft)
 	# Flip
 	pygame.display.flip()
 	c.tick(60)
