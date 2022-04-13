@@ -9,7 +9,7 @@ BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 ORANGE = (217, 106, 22)
 GREEN = (0, 120, 68)
-ZOOM = 10
+ZOOM = 3
 BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
 FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
@@ -98,13 +98,13 @@ while running:
 			elif event.key == pygame.K_RIGHT:
 				zoompos[0] += 1
 	# AI move
-	for i in range(10):
+	for i in range(50):
 		playerMove(random.choice(["up", "down", "left", "right"]))
 		cell = getPlayerBlock()
 		if cell["state"] == 2:
 			cell["state"] = 0
 			coins += 1
-		if cell["state"] == 3:
+		if cell["state"] == 3 and coins > 20:
 			print("You Win")
 			coins -= 20
 	# Drawing
@@ -125,7 +125,7 @@ while running:
 				coins += 1
 		if cell["state"] == 3:
 			pygame.draw.rect(screen, GREEN, cellrect)
-			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins > 20:
+			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins >= 20:
 				print("You Win")
 				coins -= 20
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
