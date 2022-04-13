@@ -1,5 +1,6 @@
 import pygame
 import random
+import math
 
 pygame.font.init()
 
@@ -7,6 +8,7 @@ WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 ORANGE = (217, 106, 22)
+GREEN = (0, 120, 68)
 ZOOM = 50
 BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
@@ -52,7 +54,9 @@ def addBlock(x: int, y: int) -> None:
 
 def newBlockState() -> int:
 	"""Generates a new block state."""
-	return random.choices([0, 1, 2], weights=[30, 20, 2], k=1)[0]
+	if math.dist(playerpos, [0, 0]) > 10:
+		return random.choices([0, 1, 2, 3], weights=[30, 22, 0.7, 0.1], k=1)[0]
+	return random.choices([0, 1, 2], weights=[30, 22, 2], k=1)[0]
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 
@@ -90,6 +94,11 @@ while running:
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1]:
 				cell["state"] = 0
 				coins += 1
+		if cell["state"] == 3:
+			pygame.draw.rect(screen, GREEN, cellrect)
+			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins > 20:
+				print("You Win")
+				coins -= 20
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, BLACK, playerrect)
