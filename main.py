@@ -63,11 +63,21 @@ def newBlockState(x: int, y: int) -> int:
 	if math.dist((x, y), (0, 0)) > 10 and not portalroom:
 		return random.choices([0, 1, 2, 3], weights=[30, 22, 0.7, 0.1], k=1)[0]
 	elif math.dist((x, y), (0, 0)) < 4:
-		return random.choices([0, 1, 2], weights=[30, 18, 4], k=1)[0]
+		return random.choices([0, 1, 2], weights=[40, 18, 4], k=1)[0]
 	return random.choices([0, 1, 2], weights=[30, 22, 4], k=1)[0]
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 pygame.key.set_repeat(300, 50)
+
+# Initial AI moves
+for preferredDir in ["up", "down", "left", "right"]:
+	for i in range(100):
+		playerMove(random.choice(["up", "down", "left", "right", preferredDir, preferredDir]))
+		cell = getPlayerBlock()
+		if cell["state"] == 2:
+			cell["state"] = 0
+			coins += 1
+	playerpos = [0, 0]
 
 c = pygame.time.Clock()
 running = True
@@ -88,7 +98,15 @@ while running:
 			elif event.key == pygame.K_RIGHT:
 				zoompos[0] += 1
 	# AI move
-	playerMove(random.choice(["up", "down", "left", "right"]))
+	for i in range(10):
+		playerMove(random.choice(["up", "down", "left", "right"]))
+		cell = getPlayerBlock()
+		if cell["state"] == 2:
+			cell["state"] = 0
+			coins += 1
+		if cell["state"] == 3:
+			print("You Win")
+			coins -= 20
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
