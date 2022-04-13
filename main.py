@@ -1,4 +1,3 @@
-from numpy import mat
 import pygame
 import random
 import math
@@ -10,7 +9,7 @@ BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 ORANGE = (217, 106, 22)
 GREEN = (0, 120, 68)
-ZOOM = 50
+ZOOM = 10
 BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
 FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
@@ -18,6 +17,7 @@ playerpos = [0, 0]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
 portalroom = False
+zoompos = [0, 0]
 
 def getBlock(x: int, y: int) -> "dict[str, int] | None":
 	"""Returns the block at the given coordinates."""
@@ -80,15 +80,17 @@ while running:
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_UP:
-				playerMove("up")
+				zoompos[1] -= 1
 			elif event.key == pygame.K_DOWN:
-				playerMove("down")
+				zoompos[1] += 1
 			elif event.key == pygame.K_LEFT:
-				playerMove("left")
+				zoompos[0] -= 1
 			elif event.key == pygame.K_RIGHT:
-				playerMove("right")
+				zoompos[0] += 1
+	# AI move
+	playerMove(random.choice(["up", "down", "left", "right"]))
 	# Drawing
-	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
+	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
 	for cell in BOARD:
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
@@ -116,4 +118,4 @@ while running:
 	screen.blit(FONT.render("Coins: " + str(coins), True, BLACK), toolbarrect.topleft)
 	# Flip
 	pygame.display.flip()
-	c.tick(60)
+	#c.tick(60)
