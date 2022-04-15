@@ -10,7 +10,7 @@ GRAY = (200, 200, 200)
 ORANGE = (217, 106, 22)
 GREEN = (0, 120, 68)
 ZOOM = 3
-BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
+BOARD = [{"player": False, "x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
 FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
 playerpos = [0, 0]
@@ -49,13 +49,14 @@ def playerMove(direction: str) -> None:
 	if getBlock(playerpos[0]    , playerpos[1] + 1) == None: addBlock(playerpos[0]    , playerpos[1] + 1) # Down
 	if getBlock(playerpos[0] - 1, playerpos[1]    ) == None: addBlock(playerpos[0] - 1, playerpos[1]    ) # Left
 	if getBlock(playerpos[0]    , playerpos[1] - 1) == None: addBlock(playerpos[0]    , playerpos[1] - 1) # Up
+	getBlock(playerpos[0], playerpos[1])["player"] = True
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
 	global portalroom
 	s = newBlockState(x, y)
 	if s == 3: portalroom = True
-	BOARD.append({"x": x, "y": y, "state": s})
+	BOARD.append({"player": False, "x": x, "y": y, "state": s})
 
 def newBlockState(x: int, y: int) -> int:
 	"""Generates a new block state."""
@@ -90,16 +91,21 @@ while running:
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_UP:
-				zoompos[1] -= 1
+				zoompos[1] -= 10
 			elif event.key == pygame.K_DOWN:
-				zoompos[1] += 1
+				zoompos[1] += 10
 			elif event.key == pygame.K_LEFT:
-				zoompos[0] -= 1
+				zoompos[0] -= 10
 			elif event.key == pygame.K_RIGHT:
-				zoompos[0] += 1
+				zoompos[0] += 10
 	# AI move
-	for i in range(50):
-		playerMove(random.choice(["up", "down", "left", "right"]))
+	for i in range(100):
+		options = ["up", "down", "left", "right"]
+		if not getBlock(playerpos[0] + 1, playerpos[1]		)["player"]: options.append("right") # Right
+		if not getBlock(playerpos[0]		, playerpos[1] + 1)["player"]: options.append("down") # Down
+		if not getBlock(playerpos[0] - 1, playerpos[1]		)["player"]: options.append("left") # Left
+		if not getBlock(playerpos[0]		, playerpos[1] - 1)["player"]: options.append("up") # Up
+		playerMove(random.choice(options))
 		cell = getPlayerBlock()
 		if cell["state"] == 2:
 			cell["state"] = 0
