@@ -117,6 +117,7 @@ while running:
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
 	for cell in BOARD:
+		if math.dist(playerpos, (cell["x"], cell["y"])): continue
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
 		if cell["state"] == 0:
@@ -124,8 +125,7 @@ while running:
 		if cell["state"] == 1:
 			pygame.draw.rect(screen, BLACK, cellrect)
 		if cell["state"] == 2:
-			pygame.draw.rect(screen, GRAY, cellrect)
-			pygame.draw.circle(screen, ORANGE, cellrect.center, int(ZOOM / 4))
+			pygame.draw.rect(screen, ORANGE, cellrect)
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1]:
 				cell["state"] = 0
 				coins += 1
@@ -134,7 +134,7 @@ while running:
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins >= 20:
 				print("You Win")
 				coins -= 20
-	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
+	playerrect = pygame.Rect(playerpos[0] * ZOOM, playerpos[1] * ZOOM, ZOOM, ZOOM)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, BLACK, playerrect)
 	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
