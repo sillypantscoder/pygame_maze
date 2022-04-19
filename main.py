@@ -9,6 +9,7 @@ BLACK = (0, 0, 0)
 GRAY = (200, 200, 200)
 ORANGE = (217, 106, 22)
 GREEN = (0, 120, 68)
+RED = (255, 0, 0)
 ZOOM = 3
 BOARD = [{"player": 0, "x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
@@ -90,14 +91,15 @@ while running:
 			screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 		elif event.type == pygame.KEYDOWN:
 			if event.key == pygame.K_UP:
-				zoompos[1] -= 10
+				zoompos[1] -= 70
 			elif event.key == pygame.K_DOWN:
-				zoompos[1] += 10
+				zoompos[1] += 70
 			elif event.key == pygame.K_LEFT:
-				zoompos[0] -= 10
+				zoompos[0] -= 70
 			elif event.key == pygame.K_RIGHT:
-				zoompos[0] += 10
+				zoompos[0] += 70
 	# AI move
+	playerlocs = []
 	for i in range(100):
 		options = ["up", "down", "left", "right"]
 		for i in range(1000 - getBlock(playerpos[0] + 1, playerpos[1]    )["player"]): options.append("right") # Right
@@ -112,11 +114,12 @@ while running:
 		if cell["state"] == 3 and coins > 20:
 			print("You Win")
 			coins -= 20
+		playerlocs.append(playerpos.copy())
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
 	for cell in BOARD:
-		if math.dist(playerpos, (cell["x"], cell["y"])) > 10: continue
+		if math.dist(playerpos, (cell["x"], cell["y"])) > 100: continue
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
 		if cell["state"] == 0:
@@ -133,9 +136,10 @@ while running:
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins >= 20:
 				print("You Win")
 				coins -= 20
-	playerrect = pygame.Rect(playerpos[0] * ZOOM, playerpos[1] * ZOOM, ZOOM, ZOOM)
-	playerrect.move_ip(*offset)
-	pygame.draw.rect(screen, BLACK, playerrect)
+	for p in playerlocs:
+		playerrect = pygame.Rect(p[0] * ZOOM, p[1] * ZOOM, ZOOM, ZOOM)
+		playerrect.move_ip(*offset)
+		pygame.draw.rect(screen, RED, playerrect)
 	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
 	pygame.draw.rect(screen, WHITE, toolbarrect)
 	screen.blit(FONT.render("Coins: " + str(coins), True, BLACK), toolbarrect.topleft)
