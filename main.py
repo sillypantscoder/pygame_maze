@@ -10,7 +10,7 @@ GRAY = (200, 200, 200)
 ORANGE = (217, 106, 22)
 GREEN = (0, 120, 68)
 ZOOM = 3
-BOARD = [{"player": False, "x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
+BOARD = [{"player": 0, "x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
 FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
 playerpos = [0, 0]
@@ -56,7 +56,7 @@ def addBlock(x: int, y: int) -> None:
 	global portalroom
 	s = newBlockState(x, y)
 	if s == 3: portalroom = True
-	BOARD.append({"player": False, "x": x, "y": y, "state": s})
+	BOARD.append({"player": 0, "x": x, "y": y, "state": s})
 
 def newBlockState(x: int, y: int) -> int:
 	"""Generates a new block state."""
@@ -101,10 +101,10 @@ while running:
 	# AI move
 	for i in range(100):
 		options = ["up", "down", "left", "right"]
-		if not getBlock(playerpos[0] + 1, playerpos[1]		)["player"]: options.append("right") # Right
-		if not getBlock(playerpos[0]		, playerpos[1] + 1)["player"]: options.append("down") # Down
-		if not getBlock(playerpos[0] - 1, playerpos[1]		)["player"]: options.append("left") # Left
-		if not getBlock(playerpos[0]		, playerpos[1] - 1)["player"]: options.append("up") # Up
+		for i in range(1000 - getBlock(playerpos[0] + 1, playerpos[1]    )["player"]): options.append("right") # Right
+		for i in range(1000 - getBlock(playerpos[0]    , playerpos[1] + 1)["player"]): options.append("down") # Down
+		for i in range(1000 - getBlock(playerpos[0] - 1, playerpos[1]    )["player"]): options.append("left") # Left
+		for i in range(1000 - getBlock(playerpos[0]    , playerpos[1] - 1)["player"]): options.append("up") # Up
 		playerMove(random.choice(options))
 		cell = getPlayerBlock()
 		if cell["state"] == 2:
