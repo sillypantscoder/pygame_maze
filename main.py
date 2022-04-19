@@ -19,6 +19,7 @@ SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
 portalroom = False
 zoompos = [0, 0]
+wins = 0
 
 def getBlock(x: int, y: int) -> "dict[str, int] | None":
 	"""Returns the block at the given coordinates."""
@@ -113,9 +114,9 @@ while running:
 			cell["state"] = 0
 			coins += 1
 		if cell["state"] == 3 and coins > 20:
-			print("You Win")
+			wins += 1
 			coins -= 20
-		playerlocs.append(playerpos.copy())
+		if not playerpos in playerlocs: playerlocs.append(playerpos.copy())
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
@@ -135,7 +136,7 @@ while running:
 		if cell["state"] == 3:
 			pygame.draw.rect(screen, GREEN, cellrect)
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins >= 20:
-				print("You Win")
+				wins += 1
 				coins -= 20
 	for p in playerlocs:
 		playerrect = pygame.Rect(p[0] * ZOOM, p[1] * ZOOM, ZOOM, ZOOM)
@@ -143,6 +144,6 @@ while running:
 		pygame.draw.rect(screen, RED, playerrect)
 	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
 	pygame.draw.rect(screen, WHITE, toolbarrect)
-	screen.blit(FONT.render("Coins: " + str(coins), True, BLACK), toolbarrect.topleft)
+	screen.blit(FONT.render("Coins: " + str(coins) + "; b: " + str(len(playerlocs)) + "; w: " + str(wins), True, BLACK), toolbarrect.topleft)
 	# Flip
 	pygame.display.flip()
