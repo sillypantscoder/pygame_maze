@@ -50,7 +50,8 @@ def playerMove(direction: str) -> None:
 	if getBlock(playerpos[0]    , playerpos[1] + 1) == None: addBlock(playerpos[0]    , playerpos[1] + 1) # Down
 	if getBlock(playerpos[0] - 1, playerpos[1]    ) == None: addBlock(playerpos[0] - 1, playerpos[1]    ) # Left
 	if getBlock(playerpos[0]    , playerpos[1] - 1) == None: addBlock(playerpos[0]    , playerpos[1] - 1) # Up
-	getBlock(playerpos[0], playerpos[1])["player"] = True
+	getBlock(playerpos[0], playerpos[1])["player"] += 1
+	if getBlock(playerpos[0], playerpos[1])["player"] >= 1000: getBlock(playerpos[0], playerpos[1])["state"] = 1
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
