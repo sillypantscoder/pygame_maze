@@ -80,7 +80,6 @@ for preferredDir in ["up", "down", "left", "right"]:
 			coins += 1
 	playerpos = [0, 0]
 
-c = pygame.time.Clock()
 running = True
 while running:
 	for event in pygame.event.get():
@@ -117,7 +116,7 @@ while running:
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
 	for cell in BOARD:
-		if math.dist(playerpos, (cell["x"], cell["y"])): continue
+		if math.dist(playerpos, (cell["x"], cell["y"])) > 10: continue
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
 		if cell["state"] == 0:
@@ -142,4 +141,3 @@ while running:
 	screen.blit(FONT.render("Coins: " + str(coins), True, BLACK), toolbarrect.topleft)
 	# Flip
 	pygame.display.flip()
-	#c.tick(60)
