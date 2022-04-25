@@ -63,7 +63,7 @@ def addBlock(x: int, y: int) -> None:
 
 def newBlockState(x: int, y: int) -> int:
 	"""Generates a new block state."""
-	if math.dist((x, y), (0, 0)) > 60: return random.choices([1, 2, 3], weights=[1, 25, 5], k=1)[0]
+	if math.dist((x, y), (0, 0)) > 100: return random.choices([1, 2, 3], weights=[1, 25, 5], k=1)[0]
 	if math.dist((x, y), (0, 0)) > 10 and not portalroom:
 		return random.choices([0, 1, 2, 3], weights=[30, 22, 0.7, 0.1], k=1)[0]
 	elif math.dist((x, y), (0, 0)) < 4:
@@ -121,11 +121,11 @@ while running:
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (zoompos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (zoompos[1] * -ZOOM)]
 	screen.fill(WHITE)
 	for cell in BOARD:
-		if math.dist(playerpos, (cell["x"], cell["y"])) > 100: continue
+		#if math.dist(playerpos, (cell["x"], cell["y"])) > 100: continue
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
 		if cell["state"] == 0:
-			pygame.draw.rect(screen, GRAY, cellrect)
+			pygame.draw.rect(screen, [math.min(GRAY[0] + cell["player"], 255), math.max(GRAY[1] - (cell["player"] / 2), 0), math.max(GRAY[2] - (cell["player"] / 2), 0)], cellrect)
 		if cell["state"] == 1:
 			pygame.draw.rect(screen, BLACK, cellrect)
 		if cell["state"] == 2:
