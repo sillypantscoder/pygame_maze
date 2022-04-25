@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import datetime
 
 pygame.font.init()
 
@@ -20,6 +21,8 @@ coins = 0
 portalroom = False
 zoompos = [0, 0]
 wins = 0
+draw = True
+fps = datetime.datetime.now()
 
 def getBlock(x: int, y: int) -> "dict[str, int] | None":
 	"""Returns the block at the given coordinates."""
@@ -100,6 +103,7 @@ while running:
 				zoompos[0] -= 70
 			elif event.key == pygame.K_RIGHT:
 				zoompos[0] += 70
+		elif event.type == pygame.MOUSEBUTTONUP: draw = not draw
 	# AI move
 	playerlocs = []
 	for i in range(100):
@@ -124,17 +128,17 @@ while running:
 		#if math.dist(playerpos, (cell["x"], cell["y"])) > 100: continue
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
-		if cell["state"] == 0:
+		if cell["state"] == 0 and draw:
 			pygame.draw.rect(screen, [math.min(GRAY[0] + cell["player"], 255), math.max(GRAY[1] - (cell["player"] / 2), 0), math.max(GRAY[2] - (cell["player"] / 2), 0)], cellrect)
-		if cell["state"] == 1:
+		if cell["state"] == 1 and draw:
 			pygame.draw.rect(screen, BLACK, cellrect)
 		if cell["state"] == 2:
-			pygame.draw.rect(screen, ORANGE, cellrect)
+			if draw: pygame.draw.rect(screen, ORANGE, cellrect)
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1]:
 				cell["state"] = 0
 				coins += 1
 		if cell["state"] == 3:
-			pygame.draw.rect(screen, GREEN, cellrect)
+			if draw: pygame.draw.rect(screen, GREEN, cellrect)
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins >= 20:
 				wins += 1
 				coins -= 20
@@ -144,6 +148,7 @@ while running:
 		pygame.draw.rect(screen, RED, playerrect)
 	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
 	pygame.draw.rect(screen, WHITE, toolbarrect)
-	screen.blit(FONT.render("Coins: " + str(coins) + "; b: " + str(len(playerlocs)) + "; w: " + str(wins), True, BLACK), toolbarrect.topleft)
+	screen.blit(FONT.render("Coins:" + str(coins) + ";fps:" + str(round(1 / (datetime.datetime.now() - fps).total_seconds())) + ";b:" + str(len(playerlocs)) + ";w:" + str(wins), True, BLACK), toolbarrect.topleft)
+	fps = datetime.datetime.now()
 	# Flip
 	pygame.display.flip()
