@@ -1,6 +1,7 @@
 import pygame
 import random
 import math
+import boardgen
 
 pygame.font.init()
 
@@ -22,6 +23,7 @@ playerpos = [0, 0]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
 portalroom = False
+BOARDREAD = boardgen.board
 
 def getBlock(x: int, y: int) -> "dict[str, int] | None":
 	"""Returns the block at the given coordinates."""
@@ -63,12 +65,10 @@ def addBlock(x: int, y: int) -> None:
 
 def newBlockState(x: int, y: int) -> int:
 	"""Generates a new block state."""
-	if math.dist((x, y), (0, 0)) > 60: return random.choices([1, 2, 3], weights=[1, 25, 5], k=1)[0]
-	if math.dist((x, y), (0, 0)) > 10 and not portalroom:
-		return random.choices([0, 1, 2, 3], weights=[30, 22, 0.7, 0.1], k=1)[0]
-	elif math.dist((x, y), (0, 0)) < 4:
-		return random.choices([0, 1, 2], weights=[30, 18, 4], k=1)[0]
-	return random.choices([0, 1, 2], weights=[30, 22, 4], k=1)[0]
+	try:
+		return BOARDREAD[y][x]
+	except IndexError:
+		return 1
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 pygame.key.set_repeat(300, 50)

@@ -45,11 +45,37 @@ def addBlock(x, y, state):
 	# Place block
 	board[boardpos[0]][boardpos[1]] = state
 
+def addRoom(x, y, width, height):
+	for i in range(height):
+		for j in range(width):
+			s = 1 * (i == 0 or j == 0 or i == height - 1 or j == width - 1)
+			addBlock(x + j, y + i, s)
+	# Add doors
+	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Top door
+		addBlock(x + random.randint(1, width - 2), y, 2)
+	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Bottom door
+		addBlock(x + random.randint(1, width - 2), y + height - 1, 2)
+	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Left door
+		addBlock(x, y + random.randint(1, height - 2), 2)
+	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Right door
+		addBlock(x + width - 1, y + random.randint(1, height - 2), 2)
+
 extend(y=-1)
-addBlock(-1, 1, 1)
-print("", " " * (boardoffset[0] * 2), end="|")
-for y in range(len(board)):
-	print("\n", end=("_" if y == boardoffset[1]-1 else " "))
-	for x in range(len(board[y])):
-		print("", board[y][x], end="")
-print()
+addRoom(0, 0, 5, 5)
+[addRoom(random.randint(0, 10), random.randint(0, 10), random.randint(5, 10), random.randint(5, 10)) for i in range(5)]
+
+if __name__ == "__main__":
+	print("", " " * (boardoffset[0] * 2), end="|")
+	for y in range(len(board)):
+		print("\n", end=("_" if y == boardoffset[1]-1 else " "))
+		for x in range(len(board[y])):
+			p = ["-", "X", "~"][board[y][x]]
+			print("", p, end="")
+	print()
+else:
+	f = open("board.txt", "w")
+	for y in range(len(board)):
+		for x in range(len(board[y])):
+			f.write(str(board[y][x]))
+		f.write("\n")
+	f.close()
