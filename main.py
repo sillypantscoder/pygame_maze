@@ -1,19 +1,23 @@
-from numpy import mat
 import pygame
 import random
 import math
 
 pygame.font.init()
 
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-GRAY = (200, 200, 200)
-ORANGE = (217, 106, 22)
-GREEN = (0, 120, 68)
+# Colors
+BACKGROUND = (0, 0, 0)
+TEXTCOLOR = (255, 255, 255)
+TILEEMPTY = (200, 200, 200)
+TILEWALL = (100, 100, 100)
+COINCOLOR = (217, 106, 22)
+TILEENDGAME = (0, 120, 68)
+PLAYERCOLOR = (0, 0, 0)
+
+# Setup
 ZOOM = 50
 BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
-FONTHEIGHT = FONT.render("0", True, BLACK).get_height()
+FONTHEIGHT = FONT.render("0", True, TEXTCOLOR).get_height()
 playerpos = [0, 0]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
@@ -89,31 +93,31 @@ while running:
 				playerMove("right")
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
-	screen.fill(WHITE)
+	screen.fill(BACKGROUND)
 	for cell in BOARD:
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
 		if cell["state"] == 0:
-			pygame.draw.rect(screen, GRAY, cellrect)
+			pygame.draw.rect(screen, TILEEMPTY, cellrect)
 		if cell["state"] == 1:
-			pygame.draw.rect(screen, BLACK, cellrect)
+			pygame.draw.rect(screen, TILEWALL, cellrect)
 		if cell["state"] == 2:
-			pygame.draw.rect(screen, GRAY, cellrect)
-			pygame.draw.circle(screen, ORANGE, cellrect.center, int(ZOOM / 4))
+			pygame.draw.rect(screen, TILEEMPTY, cellrect)
+			pygame.draw.circle(screen, COINCOLOR, cellrect.center, int(ZOOM / 4))
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1]:
 				cell["state"] = 0
 				coins += 1
 		if cell["state"] == 3:
-			pygame.draw.rect(screen, GREEN, cellrect)
+			pygame.draw.rect(screen, TILEENDGAME, cellrect)
 			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins > 20:
 				print("You Win")
 				coins -= 20
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
-	pygame.draw.rect(screen, BLACK, playerrect)
+	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
 	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
-	pygame.draw.rect(screen, WHITE, toolbarrect)
-	screen.blit(FONT.render("Coins: " + str(coins), True, BLACK), toolbarrect.topleft)
+	pygame.draw.rect(screen, BACKGROUND, toolbarrect)
+	screen.blit(FONT.render("Coins: " + str(coins), True, TEXTCOLOR), toolbarrect.topleft)
 	# Flip
 	pygame.display.flip()
 	c.tick(60)
