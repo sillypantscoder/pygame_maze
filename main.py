@@ -10,8 +10,7 @@ BACKGROUND = (0, 0, 0)
 TEXTCOLOR = (255, 255, 255)
 TILEEMPTY = (200, 200, 200)
 TILEWALL = (100, 100, 100)
-COINCOLOR = (217, 106, 22)
-TILEENDGAME = (0, 120, 68)
+TILEDOOR = (217, 106, 22)
 PLAYERCOLOR = (0, 0, 0)
 
 # Setup
@@ -97,21 +96,19 @@ while running:
 	for cell in BOARD:
 		cellrect = pygame.Rect(cell["x"] * ZOOM, cell["y"] * ZOOM, ZOOM, ZOOM)
 		cellrect.move_ip(*offset)
+		player_on = (cell["x"] == playerpos[0]) and (cell["y"] == playerpos[1])
 		if cell["state"] == 0:
 			pygame.draw.rect(screen, TILEEMPTY, cellrect)
-		if cell["state"] == 1:
+		elif cell["state"] == 1:
 			pygame.draw.rect(screen, TILEWALL, cellrect)
-		if cell["state"] == 2:
+		elif cell["state"] == 2:
 			pygame.draw.rect(screen, TILEEMPTY, cellrect)
-			pygame.draw.circle(screen, COINCOLOR, cellrect.center, int(ZOOM / 4))
-			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1]:
-				cell["state"] = 0
-				coins += 1
-		if cell["state"] == 3:
-			pygame.draw.rect(screen, TILEENDGAME, cellrect)
-			if cell["x"] == playerpos[0] and cell["y"] == playerpos[1] and coins > 20:
-				print("You Win")
-				coins -= 20
+			pygame.draw.rect(screen, TILEDOOR, cellrect, ZOOM//10 if player_on else 0)
+		else:
+			pygame.draw.rect(screen, TILEEMPTY, cellrect)
+			o = (cellrect.width / 2, cellrect.height / 2)
+			pygame.draw.rect(screen, TILEWALL, pygame.Rect(cellrect.left, cellrect.top, *o))
+			pygame.draw.rect(screen, TILEWALL, pygame.Rect(cellrect.left + o[0], cellrect.top + o[0], *o))
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
