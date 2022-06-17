@@ -1,6 +1,6 @@
 import pygame
 import threading
-import math
+import random
 import boardgen
 
 pygame.font.init()
@@ -23,7 +23,8 @@ BOARD = [
 ]
 FONT = pygame.font.SysFont("monospace", 30)
 FONTHEIGHT = FONT.render("0", True, TEXTCOLOR).get_height()
-playerpos = [0, 0]
+validspawn = [(x, y) for x in range(len(BOARD[0])) for y in range(len(BOARD)) if BOARD[y][x]["state"] == 1]
+playerpos = [*random.choice(validspawn)]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
 portalroom = False
@@ -41,18 +42,19 @@ def getPlayerBlock() -> "dict[str, int] | None":
 
 def playerMove(direction: str) -> None:
 	"""Moves the player in the given direction."""
+	wallblocks = [0, 2]
 	if direction == "up" and playerpos[1] > 0:
 		playerpos[1] -= 1
-		if getPlayerBlock()["state"] == 1: playerpos[1] += 1
+		if getPlayerBlock()["state"] in wallblocks: playerpos[1] += 1
 	elif direction == "down" and playerpos[1] < len(BOARD) - 1:
 		playerpos[1] += 1
-		if getPlayerBlock()["state"] == 1: playerpos[1] -= 1
+		if getPlayerBlock()["state"] in wallblocks: playerpos[1] -= 1
 	elif direction == "left" and playerpos[0] > 0:
 		playerpos[0] -= 1
-		if getPlayerBlock()["state"] == 1: playerpos[0] += 1
+		if getPlayerBlock()["state"] in wallblocks: playerpos[0] += 1
 	elif direction == "right" and playerpos[0] < len(BOARD[0]) - 1:
 		playerpos[0] += 1
-		if getPlayerBlock()["state"] == 1: playerpos[0] -= 1
+		if getPlayerBlock()["state"] in wallblocks: playerpos[0] -= 1
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
@@ -85,7 +87,7 @@ def asyncLight():
 				# Make sure we are not checking the target block or the player position.
 				if point != (x, y) and [*point] != playerpos:
 					# Check if the block is a wall.
-					if b["state"] != 0:
+					if b["state"] not in [0, 1]:
 						walls += 1
 			# 4. If there are no walls, set the block to light.
 			block["light"] = walls == 0
@@ -143,10 +145,15 @@ while running:
 			cellrect.move_ip(*offset)
 			player_on = (x == playerpos[0]) and (y == playerpos[1])
 			if cell["state"] == 0:
-				pygame.draw.rect(screen, TILEEMPTY, cellrect)
+				# Random white pixel
+				pixel_x = random.randint(0, ZOOM - 1)
+				pixel_y = random.randint(0, ZOOM - 1)
+				screen.set_at((cellrect.left + pixel_x, cellrect.top + pixel_y), TEXTCOLOR)
 			elif cell["state"] == 1:
-				pygame.draw.rect(screen, TILEWALL, cellrect)
+				pygame.draw.rect(screen, TILEEMPTY, cellrect)
 			elif cell["state"] == 2:
+				pygame.draw.rect(screen, TILEWALL, cellrect)
+			elif cell["state"] == 3:
 				pygame.draw.rect(screen, TILEEMPTY, cellrect)
 				pygame.draw.rect(screen, TILEDOOR, cellrect, ZOOM//10 if player_on else 0)
 			else:
