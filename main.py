@@ -1,5 +1,5 @@
 import pygame
-import random
+import threading
 import math
 import boardgen
 
@@ -8,14 +8,14 @@ pygame.font.init()
 # Colors
 BACKGROUND = (0, 0, 0)
 TEXTCOLOR = (255, 255, 255)
-TILEEMPTY = (200, 200, 200)
-TILEWALL = (100, 100, 100)
+TILEEMPTY = (30, 30, 200)
+TILEWALL = (255, 40, 40)
 TILEDOOR = (217, 106, 22)
 PLAYERCOLOR = (0, 0, 0)
 
 # Setup
 ZOOM = 50
-BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0))} for x in [-1, 0, 1] for y in [-1, 0, 1]]
+BOARD = [{"x": x, "y": y, "state": 1 * ((x != 0) and (y != 0)), "light": True} for x in [-1, 0, 1] for y in [-1, 0, 1]]
 FONT = pygame.font.SysFont("monospace", 30)
 FONTHEIGHT = FONT.render("0", True, TEXTCOLOR).get_height()
 playerpos = [0, 0]
@@ -60,7 +60,7 @@ def addBlock(x: int, y: int) -> None:
 	global portalroom
 	s = newBlockState(x, y)
 	if s == 3: portalroom = True
-	BOARD.append({"x": x, "y": y, "state": s})
+	BOARD.append({"x": x, "y": y, "state": s, "light": True})
 
 def newBlockState(x: int, y: int) -> int:
 	"""Generates a new block state."""
@@ -69,11 +69,36 @@ def newBlockState(x: int, y: int) -> int:
 	except IndexError:
 		return 1
 
+def asyncLight():
+	"""Checks whether the player has a line of sight for each block."""
+	from line_points import get_line as get_line_points
+	for block in BOARD:
+		# Check whether the player has a line of sight to the block.
+		# 1. Get list of points from player to block.
+		p = get_line_points((playerpos[0], playerpos[1]), (block["x"], block["y"]))
+		# 2. Assume the player has a line of sight to the block.
+		block["light"] = True
+		# 3. Check whether any of the points are walls.
+		for point in p:
+			b = getBlock(point[0], point[1])
+			# Make sure we are not checking the target block.
+			if b != block:
+				# Check if the block is a wall.
+				if (not b) or b["state"] in [1, 2]:
+					block["light"] = False
+					break
+def asyncMultipleLight():
+	global running
+	while running:
+		asyncLight()
+		pygame.time.wait(100)
+
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 pygame.key.set_repeat(300, 50)
 
 c = pygame.time.Clock()
 running = True
+threading.Thread(target=asyncMultipleLight, name="game light daemon", args=()).start()
 while running:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -109,6 +134,11 @@ while running:
 			o = (cellrect.width / 2, cellrect.height / 2)
 			pygame.draw.rect(screen, TILEWALL, pygame.Rect(cellrect.left, cellrect.top, *o))
 			pygame.draw.rect(screen, TILEWALL, pygame.Rect(cellrect.left + o[0], cellrect.top + o[0], *o))
+		if cell["light"] == False:
+			# Dim the cell.
+			s = pygame.Surface(cellrect.size, pygame.SRCALPHA)
+			s.fill((0, 0, 0, 200))
+			screen.blit(s, cellrect)
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
