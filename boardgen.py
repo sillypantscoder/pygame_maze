@@ -72,10 +72,3 @@ if __name__ == "__main__":
 			p = ["-", "X", "~"][board[y][x]]
 			print("", p, end="")
 	print()
-else:
-	f = open("board.txt", "w")
-	for y in range(len(board)):
-		for x in range(len(board[y])):
-			f.write(str(board[y][x]))
-		f.write("\n")
-	f.close()
