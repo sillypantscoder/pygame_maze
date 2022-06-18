@@ -3,6 +3,7 @@ import threading
 import random
 import boardgen
 from boardconst import *
+import pathfind
 
 pygame.font.init()
 
@@ -97,15 +98,6 @@ def asyncMultipleLight():
 		asyncLight()
 		pygame.time.wait(100)
 
-def pathfind(x, y):
-	"""Finds the path from the player to the given block."""
-	from pathfinding.core.diagonal_movement import DiagonalMovement
-	from pathfinding.core.grid import Grid
-	from pathfinding.finder.a_star import AStarFinder
-	matrix = [[(state not in WALLBLOCKS) * 1 for state in row] for row in BOARD]
-	for row in matrix:
-		print(row)
-
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 pygame.key.set_repeat(300, 50)
 
@@ -113,6 +105,7 @@ c = pygame.time.Clock()
 running = True
 threading.Thread(target=asyncMultipleLight, name="game light daemon", args=()).start()
 while running:
+	clicked = None
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			running = False
@@ -129,11 +122,7 @@ while running:
 			elif event.key == pygame.K_RIGHT:
 				playerMove("right")
 		elif event.type == pygame.MOUSEBUTTONDOWN:
-			# Get cell coordinates
-			x = int(event.pos[0] / ZOOM)
-			y = int(event.pos[1] / ZOOM)
-			# Pathfind to the block
-			pathfind(x, y)
+			clicked = pygame.mouse.get_pos()
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(BACKGROUND)
@@ -166,6 +155,13 @@ while running:
 				s = pygame.Surface(cellrect.size, pygame.SRCALPHA)
 				s.fill((0, 0, 0, 200))
 				screen.blit(s, cellrect)
+			# Pathfinding
+			if clicked and cellrect.collidepoint(clicked):
+				# Find a path to the block
+				path = pathfind.pathfind(boardgen.board, playerpos, (x, y))
+				# Move the player
+				if path != None:
+					playerpos = [*path[-1]]
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
