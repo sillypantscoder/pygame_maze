@@ -2,6 +2,7 @@ import pygame
 import threading
 import random
 import boardgen
+from boardconst import *
 
 pygame.font.init()
 
@@ -42,19 +43,18 @@ def getPlayerBlock() -> "dict[str, int] | None":
 
 def playerMove(direction: str) -> None:
 	"""Moves the player in the given direction."""
-	wallblocks = [0, 2]
 	if direction == "up" and playerpos[1] > 0:
 		playerpos[1] -= 1
-		if getPlayerBlock()["state"] in wallblocks: playerpos[1] += 1
+		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[1] += 1
 	elif direction == "down" and playerpos[1] < len(BOARD) - 1:
 		playerpos[1] += 1
-		if getPlayerBlock()["state"] in wallblocks: playerpos[1] -= 1
+		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[1] -= 1
 	elif direction == "left" and playerpos[0] > 0:
 		playerpos[0] -= 1
-		if getPlayerBlock()["state"] in wallblocks: playerpos[0] += 1
+		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[0] += 1
 	elif direction == "right" and playerpos[0] < len(BOARD[0]) - 1:
 		playerpos[0] += 1
-		if getPlayerBlock()["state"] in wallblocks: playerpos[0] -= 1
+		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[0] -= 1
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
@@ -87,7 +87,7 @@ def asyncLight():
 				# Make sure we are not checking the target block or the player position.
 				if point != (x, y) and [*point] != playerpos:
 					# Check if the block is a wall.
-					if b["state"] not in [0, 1]:
+					if b["state"] not in SEETHROUGHBLOCKS:
 						walls += 1
 			# 4. If there are no walls, set the block to light.
 			block["light"] = walls == 0
@@ -102,7 +102,7 @@ def pathfind(x, y):
 	from pathfinding.core.diagonal_movement import DiagonalMovement
 	from pathfinding.core.grid import Grid
 	from pathfinding.finder.a_star import AStarFinder
-	matrix = [[(state == 0) * 1 for state in row] for row in BOARD]
+	matrix = [[(state not in WALLBLOCKS) * 1 for state in row] for row in BOARD]
 	for row in matrix:
 		print(row)
 

@@ -1,7 +1,9 @@
 import random
+from boardconst import *
 
-board = [[0 for y in range(1)] for x in range(1)]
+board = [[CHASM for y in range(1)] for x in range(1)]
 boardoffset = [0, 0]
+doorlocs = []
 
 def extend(x = 0, y = 0):
 	if x < 0:
@@ -48,26 +50,41 @@ def addBlock(x, y, state):
 def addRoom(x, y, width, height):
 	for i in range(height):
 		for j in range(width):
-			s = 1 * (i == 0 or j == 0 or i == height - 1 or j == width - 1)
-			addBlock(x + j, y + i, s + 1)
+			isRoomEdge = (i == 0 or j == 0 or i == height - 1 or j == width - 1)
+			s = WALL if isRoomEdge else FLOOR
+			addBlock(x + j, y + i, s)
 	# Add doors
+	roomdoors = []
 	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Top door
-		addBlock(x + random.randint(1, width - 2), y, 3)
+		doorpos = (x + random.randint(1, width - 2), y)
+		doorlocs.append(doorpos)
+		roomdoors.append(doorpos)
 	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Bottom door
-		addBlock(x + random.randint(1, width - 2), y + height - 1, 3)
+		doorpos = (x + random.randint(1, width - 2), y + height - 1)
+		doorlocs.append(doorpos)
+		roomdoors.append(doorpos)
 	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Left door
-		addBlock(x, y + random.randint(1, height - 2), 3)
+		doorpos = (x, y + random.randint(1, height - 2))
+		doorlocs.append(doorpos)
+		roomdoors.append(doorpos)
 	if random.choices([True, False], weights=[3, 4], k=1)[0]: # Right door
-		addBlock(x + width - 1, y + random.randint(1, height - 2), 3)
+		doorpos = (x + width - 1, y + random.randint(1, height - 2))
+		doorlocs.append(doorpos)
+		roomdoors.append(doorpos)
+	for doorpos in roomdoors:
+		addBlock(doorpos[0], doorpos[1], DOOR)
 
 extend(y=-1)
 [addRoom(random.randint(0, 30), random.randint(0, 30), random.randint(5, 10), random.randint(5, 10)) for i in range(10)]
+# Add doors
+for doorpos in doorlocs:
+	addBlock(doorpos[0], doorpos[1], DOOR)
 
 if __name__ == "__main__":
 	print("", " " * (boardoffset[0] * 2), end="|")
 	for y in range(len(board)):
 		print("\n", end=("_" if y == boardoffset[1]-1 else " "))
 		for x in range(len(board[y])):
-			p = ["-", "X", "~"][board[y][x]]
+			p = [".", "-", "X", "~"][board[y][x]]
 			print("", p, end="")
 	print()
