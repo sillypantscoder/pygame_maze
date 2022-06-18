@@ -13,6 +13,7 @@ TEXTCOLOR = (255, 255, 255)
 TILEEMPTY = (30, 30, 200)
 TILEWALL = (255, 40, 40)
 TILEDOOR = (217, 106, 22)
+TILEBOARDWALK = (102, 53, 34)
 PLAYERCOLOR = (0, 0, 0)
 
 # Setup
@@ -30,6 +31,7 @@ playerpos = [*random.choice(validspawn)]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 coins = 0
 portalroom = False
+ROUTE = []
 
 def insideBoard(x: int, y: int) -> bool:
 	"""Checks whether the given coordinates are inside the board."""
@@ -123,6 +125,9 @@ while running:
 				playerMove("right")
 		elif event.type == pygame.MOUSEBUTTONDOWN:
 			clicked = pygame.mouse.get_pos()
+	# Route
+	if len(ROUTE) > 0:
+		playerpos = ROUTE.pop(0)
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(BACKGROUND)
@@ -145,6 +150,8 @@ while running:
 			elif cell["state"] == 3:
 				pygame.draw.rect(screen, TILEEMPTY, cellrect)
 				pygame.draw.rect(screen, TILEDOOR, cellrect, ZOOM//10 if player_on else 0)
+			elif cell["state"] == 4:
+				pygame.draw.rect(screen, TILEBOARDWALK, cellrect)
 			else:
 				pygame.draw.rect(screen, TILEEMPTY, cellrect)
 				o = (cellrect.width / 2, cellrect.height / 2)
@@ -161,7 +168,8 @@ while running:
 				path = pathfind.pathfind(boardgen.board, playerpos, (x, y))
 				# Move the player
 				if path != None:
-					playerpos = [*path[-1]]
+					for p in path:
+						ROUTE.append(p)
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
