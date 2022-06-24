@@ -3,10 +3,10 @@ from pathfinding.core.grid import Grid
 from pathfinding.finder.a_star import AStarFinder
 from boardconst import *
 
-def pathfind(board: "list[list[int]]", frompos: "tuple[int, int]", topos: "tuple[int, int]", allowedBlocks: "list[int]" = FLOORBLOCKS) -> "list[tuple[int, int]] | None":
+def pathfind(board: "list[list[int]]", frompos: "tuple[int, int]", topos: "tuple[int, int]", allowedBlocks: "dict[int, int]" = {x: 1 for x in FLOORBLOCKS}) -> "list[tuple[int, int]] | None":
 	"""Finds the path from a point to a different point. Return None if no path is found."""
 	# Create a grid from the board.
-	matrix = [[(state in allowedBlocks) * 1 for state in row] for row in board]
+	matrix = [[(allowedBlocks[state] if state in allowedBlocks else 0) for state in row] for row in board]
 	grid = Grid(matrix=matrix)
 	# Start and end nodes
 	try:

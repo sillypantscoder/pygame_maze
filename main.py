@@ -1,7 +1,7 @@
 import pygame
 import threading
 import random
-import boardgen
+import boardgen_points as boardgen
 from boardconst import *
 import pathfind
 
@@ -127,7 +127,7 @@ while running:
 			clicked = pygame.mouse.get_pos()
 	# Route
 	if len(ROUTE) > 0:
-		playerpos = ROUTE.pop(0)
+		playerpos = [*ROUTE.pop(0)]
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(BACKGROUND)
