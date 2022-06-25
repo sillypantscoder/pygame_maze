@@ -33,6 +33,29 @@ coins = 0
 portalroom = False
 ROUTE = []
 
+class Monster:
+	def __init__(self, x: int, y: int):
+		self.x = x
+		self.y = y
+	def frame(self):
+		# Pathfind to player
+		path = pathfind.pathfind(boardgen.board, (self.x, self.y), playerpos)
+		if path:
+			if len(path) > 1:
+				# Move towards player
+				self.x, self.y = path[1]
+			else:
+				# We're at the player, attack!
+				pass
+				# Health not implemented yet...
+		else:
+			# Can't find the player...
+			if self in ENTITIES: ENTITIES.remove(self)
+	def draw(self, screen, offset):
+		pygame.draw.circle(screen, PLAYERCOLOR, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 2)
+
+ENTITIES = [Monster(*random.choice(validspawn))]
+
 def insideBoard(x: int, y: int) -> bool:
 	"""Checks whether the given coordinates are inside the board."""
 	return (0 <= x < len(BOARD[0])) and (0 <= y < len(BOARD))
@@ -128,6 +151,9 @@ while running:
 	# Route
 	if len(ROUTE) > 0:
 		playerpos = [*ROUTE.pop(0)]
+		# Tick the entities
+		for entity in ENTITIES:
+			entity.frame()
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(BACKGROUND)
@@ -168,8 +194,12 @@ while running:
 				path = pathfind.pathfind(boardgen.board, playerpos, (x, y))
 				# Move the player
 				if path != None:
-					for p in path:
+					for p in path[1:]:
 						ROUTE.append(p)
+	# Draw the entities
+	for entity in ENTITIES:
+		entity.draw(screen, offset)
+	# Draw the player
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
