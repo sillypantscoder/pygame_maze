@@ -52,9 +52,12 @@ class Monster:
 			# Can't find the player...
 			if self in ENTITIES: ENTITIES.remove(self)
 	def draw(self, screen, offset):
+		# Check if we're on a hidden tile
+		if not BOARD[self.y][self.x]["light"]:
+			return
 		pygame.draw.circle(screen, PLAYERCOLOR, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 2)
 
-ENTITIES = [Monster(*random.choice(validspawn))]
+ENTITIES = [Monster(*random.choice(validspawn)) for x in range(10)]
 
 def insideBoard(x: int, y: int) -> bool:
 	"""Checks whether the given coordinates are inside the board."""
