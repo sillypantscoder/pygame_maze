@@ -64,11 +64,39 @@ class MoveAction(Action):
 		else:
 			playerpos = [*self.pos]
 
+class AttackAction(Action):
+	def __init__(self, to: "Monster | None" = None):
+		super().__init__(to)
+	def run(self):
+		if self.to == None:
+			# Attack the player
+			global health
+			health -= 1
+		else:
+			# Attack a monster
+			self.to.health -= 1
+
+class ClickAction(Action):
+	def __init__(self, pos: "tuple[int, int]"):
+		super().__init__()
+		self.pos = pos
+	def run(self):
+		# Check if the player clicked on a monster.
+		c = False
+		for m in ENTITIES:
+			if m.x == self.pos[0] and m.y == self.pos[1]:
+				AttackAction(m).run()
+				c = True
+		# Otherwise, move here.
+		if not c:
+			MoveAction(None, self.pos).run()
+
 class Monster:
 	def __init__(self, x: int, y: int):
 		self.x = x
 		self.y = y
 		self.action: "Action | None" = None
+		self.health = maxhealth // 3
 	def frame(self):
 		global health
 		# Check if we need to figure out what to do next
@@ -77,6 +105,13 @@ class Monster:
 		# Ok then
 		self.action.run()
 		self.action = None
+		# Check if we're dead
+		if self.health <= 0:
+			self.die()
+			print("Monster died...")
+	def die(self):
+		if self in ENTITIES: ENTITIES.remove(self)
+		self.action = Action(self)
 	def newaction(self):
 		global health
 		# Pathfind to player
@@ -87,12 +122,10 @@ class Monster:
 				self.action = MoveAction(self, path[1])
 			else:
 				# We're at the player, attack!
-				self.action = Action(self)
-				# ...probably implement something like "AttackAction" later
+				self.action = AttackAction()
 		else:
 			# can't find the player...
-			if self in ENTITIES: ENTITIES.remove(self)
-			self.action = Action(self)
+			self.die()
 			# so we kill ourselves. logical course of action.
 			print("Monster died")
 	def draw(self, screen, offset):
@@ -116,6 +149,8 @@ def getPlayerBlock() -> "dict[str, int] | None":
 
 def playerMove(direction: str) -> None:
 	"""Moves the player in the given direction."""
+	global playerpos
+	oldPos = [*playerpos]
 	if direction == "up" and playerpos[1] > 0:
 		playerpos[1] -= 1
 		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[1] += 1
@@ -128,6 +163,8 @@ def playerMove(direction: str) -> None:
 	elif direction == "right" and playerpos[0] < len(BOARD[0]) - 1:
 		playerpos[0] += 1
 		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[0] -= 1
+	ROUTE.append(ClickAction(playerpos))
+	playerpos = [*oldPos]
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
@@ -215,7 +252,7 @@ while running:
 				# Move the player
 				if path != None:
 					for p in path[1:]:
-						ROUTE.append(MoveAction(None, p))
+						ROUTE.append(ClickAction(p))
 	# Draw the entities
 	for entity in ENTITIES:
 		entity.draw(screen, offset)
