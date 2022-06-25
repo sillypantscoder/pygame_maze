@@ -29,8 +29,8 @@ FONTHEIGHT = FONT.render("0", True, TEXTCOLOR).get_height()
 validspawn = [(x, y) for x in range(len(BOARD[0])) for y in range(len(BOARD)) if BOARD[y][x]["state"] == 1]
 playerpos = [*random.choice(validspawn)]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
-coins = 0
-portalroom = False
+maxhealth = 10
+health = maxhealth + 0
 ROUTE = []
 
 class Monster:
@@ -38,16 +38,16 @@ class Monster:
 		self.x = x
 		self.y = y
 	def frame(self):
+		global health
 		# Pathfind to player
 		path = pathfind.pathfind(boardgen.board, (self.x, self.y), playerpos)
 		if path:
-			if len(path) > 1:
+			if len(path) > 2:
 				# Move towards player
 				self.x, self.y = path[1]
 			else:
 				# We're at the player, attack!
-				pass
-				# Health not implemented yet...
+				health -= 1
 		else:
 			# Can't find the player...
 			if self in ENTITIES: ENTITIES.remove(self)
@@ -206,9 +206,12 @@ while running:
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
 	pygame.draw.rect(screen, PLAYERCOLOR, playerrect)
+	# Add health bar
 	toolbarrect = pygame.Rect(0, SCREENSIZE[1] - FONTHEIGHT, SCREENSIZE[0], FONTHEIGHT)
 	pygame.draw.rect(screen, BACKGROUND, toolbarrect)
-	screen.blit(FONT.render("Coins: " + str(coins), True, TEXTCOLOR), toolbarrect.topleft)
+	healthbarrect = toolbarrect.copy()
+	healthbarrect.width = healthbarrect.width * (health / maxhealth)
+	pygame.draw.rect(screen, TEXTCOLOR, healthbarrect)
 	# Flip
 	pygame.display.flip()
 	c.tick(60)
