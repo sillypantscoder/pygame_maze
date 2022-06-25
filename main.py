@@ -33,6 +33,20 @@ maxhealth = 10
 health = maxhealth + 0
 ROUTE: "list[Action]" = []
 
+# Textures
+TEXTURES: "list[pygame.Surface]" = []
+DARKTEXTURES: "list[pygame.Surface]" = []
+colors = [(0, 0, 0), (30, 30, 200), (255, 40, 40), (217, 106, 22), (102, 53, 34)]
+for i in ALLBLOCKS:
+	TEXTURES.append(None)
+	TEXTURES[i] = pygame.Surface([ZOOM, ZOOM])
+	TEXTURES[i].fill(colors[i])
+	DARKTEXTURES.append(TEXTURES[i].copy())
+	# Dim the texture.
+	s = pygame.Surface([ZOOM, ZOOM], pygame.SRCALPHA)
+	s.fill((0, 0, 0, 200))
+	DARKTEXTURES[i].blit(s, (0, 0))
+
 class Action:
 	def __init__(self, to: "Monster | None" = None):
 		self.to = to
@@ -54,20 +68,33 @@ class Monster:
 	def __init__(self, x: int, y: int):
 		self.x = x
 		self.y = y
+		self.action: "Action | None" = None
 	def frame(self):
+		global health
+		# Check if we need to figure out what to do next
+		if self.action == None:
+			self.newaction()
+		# Ok then
+		self.action.run()
+		self.action = None
+	def newaction(self):
 		global health
 		# Pathfind to player
 		path = pathfind.pathfind(boardgen.board, (self.x, self.y), playerpos)
 		if path:
 			if len(path) > 2:
 				# Move towards player
-				self.x, self.y = path[1]
+				self.action = MoveAction(self, path[1])
 			else:
 				# We're at the player, attack!
-				health -= 1
+				self.action = Action(self)
+				# ...probably implement something like "AttackAction" later
 		else:
-			# Can't find the player...
+			# can't find the player...
 			if self in ENTITIES: ENTITIES.remove(self)
+			self.action = Action(self)
+			# so we kill ourselves. logical course of action.
+			print("Monster died")
 	def draw(self, screen, offset):
 		# Check if we're on a hidden tile
 		if not BOARD[self.y][self.x]["light"]:
@@ -116,7 +143,7 @@ def newBlockState(x: int, y: int) -> int:
 	except IndexError:
 		return 1
 
-def asyncLight():
+def checkLight():
 	"""Checks whether the player has a line of sight for each block."""
 	from line_points import get_line as get_line_points
 	# Iterate over every block
@@ -137,18 +164,13 @@ def asyncLight():
 						walls += 1
 			# 4. If there are no walls, set the block to light.
 			block["light"] = walls == 0
-def asyncMultipleLight():
-	global running
-	while running:
-		asyncLight()
-		pygame.time.wait(100)
 
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 pygame.key.set_repeat(300, 50)
 
 c = pygame.time.Clock()
 running = True
-threading.Thread(target=asyncMultipleLight, name="game light daemon", args=()).start()
+checkLight()
 while running:
 	clicked = None
 	for event in pygame.event.get():
@@ -174,6 +196,7 @@ while running:
 		# Tick the entities
 		for entity in ENTITIES:
 			entity.frame()
+		checkLight()
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
 	screen.fill(BACKGROUND)
@@ -184,30 +207,7 @@ while running:
 			cellrect = pygame.Rect(x * ZOOM, y * ZOOM, ZOOM, ZOOM)
 			cellrect.move_ip(*offset)
 			player_on = (x == playerpos[0]) and (y == playerpos[1])
-			if cell["state"] == 0:
-				# Random white pixel
-				pixel_x = random.randint(0, ZOOM - 1)
-				pixel_y = random.randint(0, ZOOM - 1)
-				screen.set_at((cellrect.left + pixel_x, cellrect.top + pixel_y), TEXTCOLOR)
-			elif cell["state"] == 1:
-				pygame.draw.rect(screen, TILEEMPTY, cellrect)
-			elif cell["state"] == 2:
-				pygame.draw.rect(screen, TILEWALL, cellrect)
-			elif cell["state"] == 3:
-				pygame.draw.rect(screen, TILEEMPTY, cellrect)
-				pygame.draw.rect(screen, TILEDOOR, cellrect, ZOOM//10 if player_on else 0)
-			elif cell["state"] == 4:
-				pygame.draw.rect(screen, TILEBOARDWALK, cellrect)
-			else:
-				pygame.draw.rect(screen, TILEEMPTY, cellrect)
-				o = (cellrect.width / 2, cellrect.height / 2)
-				pygame.draw.rect(screen, TILEWALL, pygame.Rect(cellrect.left, cellrect.top, *o))
-				pygame.draw.rect(screen, TILEWALL, pygame.Rect(cellrect.left + o[0], cellrect.top + o[0], *o))
-			if cell["light"] == False:
-				# Dim the cell.
-				s = pygame.Surface(cellrect.size, pygame.SRCALPHA)
-				s.fill((0, 0, 0, 200))
-				screen.blit(s, cellrect)
+			screen.blit((TEXTURES if cell["light"] else DARKTEXTURES)[cell["state"]], cellrect)
 			# Pathfinding
 			if clicked and cellrect.collidepoint(clicked):
 				# Find a path to the block

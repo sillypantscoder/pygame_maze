@@ -5,6 +5,9 @@ WALL = 2
 DOOR = 3
 BOARDWALK = 4
 
+# All the blocks
+ALLBLOCKS = [CHASM, FLOOR, WALL, DOOR, BOARDWALK]
+
 # Blocks that prevent movement.
 WALLBLOCKS = [CHASM, WALL]
 
