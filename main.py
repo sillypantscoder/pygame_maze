@@ -31,7 +31,24 @@ playerpos = [*random.choice(validspawn)]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
 maxhealth = 10
 health = maxhealth + 0
-ROUTE = []
+ROUTE: "list[Action]" = []
+
+class Action:
+	def __init__(self, to: "Monster | None" = None):
+		self.to = to
+	def run(self):
+		pass
+
+class MoveAction(Action):
+	def __init__(self, to: "Monster | None" = None, pos: "tuple[int, int]" = (0, 0)):
+		super().__init__(to)
+		self.pos = pos
+	def run(self):
+		global playerpos
+		if self.to != None:
+			self.to.x, self.to.y = self.pos
+		else:
+			playerpos = [*self.pos]
 
 class Monster:
 	def __init__(self, x: int, y: int):
@@ -153,7 +170,7 @@ while running:
 			clicked = pygame.mouse.get_pos()
 	# Route
 	if len(ROUTE) > 0:
-		playerpos = [*ROUTE.pop(0)]
+		ROUTE.pop(0).run()
 		# Tick the entities
 		for entity in ENTITIES:
 			entity.frame()
@@ -198,7 +215,7 @@ while running:
 				# Move the player
 				if path != None:
 					for p in path[1:]:
-						ROUTE.append(p)
+						ROUTE.append(MoveAction(None, p))
 	# Draw the entities
 	for entity in ENTITIES:
 		entity.draw(screen, offset)
