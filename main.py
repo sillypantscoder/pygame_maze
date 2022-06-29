@@ -147,24 +147,42 @@ def getPlayerBlock() -> "dict[str, int] | None":
 	except IndexError:
 		return None
 
+def isCellThatPlayerCanMoveInto(pos):
+	x, y = pos
+	return BOARD[y][x]["state"] not in WALLBLOCKS
+
+def posAfterMoved(pos, dir):
+	if dir == "up":
+		return [pos[0], pos[1]-1]
+	elif dir == "down":
+		return [pos[0], pos[1]+1]
+	elif dir == "left":
+		return [pos[0]-1, pos[1]]
+	elif dir == "right":
+		return [pos[0]+1, pos[1]]
+
+def finalPlayerPos():
+	newPos = [*playerpos]
+	for a in ROUTE:
+		if isinstance(a, MoveAction):
+			newPos = [*a.pos]
+		elif isinstance(a, ClickAction):
+			c = False
+			for m in ENTITIES:
+				if m.x == newPos[0] and m.y == newPos[1]:
+					c = True
+			# Otherwise, move here.
+			if not c:
+				newPos = [*a.pos]
+	return newPos
+
 def playerMove(direction: str) -> None:
 	"""Moves the player in the given direction."""
 	global playerpos
-	oldPos = [*playerpos]
-	if direction == "up" and playerpos[1] > 0:
-		playerpos[1] -= 1
-		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[1] += 1
-	elif direction == "down" and playerpos[1] < len(BOARD) - 1:
-		playerpos[1] += 1
-		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[1] -= 1
-	elif direction == "left" and playerpos[0] > 0:
-		playerpos[0] -= 1
-		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[0] += 1
-	elif direction == "right" and playerpos[0] < len(BOARD[0]) - 1:
-		playerpos[0] += 1
-		if getPlayerBlock()["state"] in WALLBLOCKS: playerpos[0] -= 1
-	ROUTE.append(ClickAction(playerpos))
-	playerpos = [*oldPos]
+	newPos = posAfterMoved(finalPlayerPos(), direction)
+	if not isCellThatPlayerCanMoveInto(newPos):
+		return
+	ROUTE.append(ClickAction(newPos))
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
@@ -251,8 +269,18 @@ while running:
 				path = pathfind.pathfind(boardgen.board, playerpos, (x, y))
 				# Move the player
 				if path != None:
+					pr = [*playerpos]
 					for p in path[1:]:
-						ROUTE.append(ClickAction(p))
+						# Figure out the direction to move
+						if p[0] > pr[0]:
+							playerMove("right")
+						elif p[0] < pr[0]:
+							playerMove("left")
+						elif p[1] > pr[1]:
+							playerMove("down")
+						elif p[1] < pr[1]:
+							playerMove("up")
+						pr = [*p]
 	# Draw the entities
 	for entity in ENTITIES:
 		entity.draw(screen, offset)
