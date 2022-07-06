@@ -34,6 +34,7 @@ health = maxhealth + 0
 TARGET: "list[int]" = [*playerpos]
 INVENTORY: "list[Item]" = []
 ITEMS: "list[DroppedItem]" = []
+INVENTORY_MAINHAND = None
 
 # Textures
 TEXTURES: "list[pygame.Surface]" = []
@@ -87,12 +88,12 @@ class Monster:
 		pygame.draw.circle(screen, PLAYERCOLOR, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 2)
 
 class Item:
-	def __init__(self):
-		pass
+	def __init__(self, name):
+		self.name = name
 	def draw(self):
 		s = pygame.Surface((ZOOM, ZOOM), pygame.SRCALPHA)
 		s.fill((0, 0, 0, 0))
-		pygame.draw.circle(s, TILEBOARDWALK, (ZOOM // 2, ZOOM // 2), ZOOM // 3)
+		s.blit(FONT.render(self.name, True, TEXTCOLOR), (0, 0))
 		return s
 
 class DroppedItem:
@@ -110,8 +111,12 @@ class DroppedItem:
 		#pygame.draw.circle(screen, TILEBOARDWALK, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 3)
 		screen.blit(self.item.draw(), ((self.x * ZOOM) + offset[0], (self.y * ZOOM) + offset[1]))
 
+def newItem():
+	i = random.choices(["item", "sword"], weights=[10, 1], k=1)[0]
+	ITEMS.append(DroppedItem(random.choice(validspawn), Item(i)))
+
 ENTITIES = [Monster(*random.choice(validspawn)) for x in range(10)]
-[ITEMS.append(DroppedItem(random.choice(validspawn), Item())) for i in range(20)];
+[newItem() for i in range(20)];
 
 def insideBoard(x: int, y: int) -> bool:
 	"""Checks whether the given coordinates are inside the board."""
@@ -191,10 +196,11 @@ pygame.key.set_repeat(300, 50)
 def DIALOG_INVENTORY():
 	global screen
 	global SCREENSIZE
+	global INVENTORY_MAINHAND
 	c = pygame.time.Clock()
 	running = True
 	while running:
-		clicked = None
+		clicked = False
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				return False
@@ -205,22 +211,47 @@ def DIALOG_INVENTORY():
 				if event.key == pygame.K_ESCAPE:
 					return True
 			elif event.type == pygame.MOUSEBUTTONDOWN:
-				clicked = pygame.mouse.get_pos()
+				clicked = True
+		# Background
+		p = pygame.Surface((SCREENSIZE[0], SCREENSIZE[1]), pygame.SRCALPHA)
+		p.fill((255, 255, 255, 1))
+		screen.blit(p, (0, 0))
 		# Header
 		pygame.draw.rect(screen, BACKGROUND, pygame.Rect(0, 0, SCREENSIZE[0], FONTHEIGHT))
 		screen.blit(FONT.render("Inventory", True, TEXTCOLOR), (0, 0))
 		# Grid
 		num_cols = 4
 		cell_size = SCREENSIZE[0] // num_cols
-		for i in range(len(INVENTORY)):
+		# Main hand
+		if INVENTORY_MAINHAND:
+			row = 0 // num_cols
+			col = 0 % num_cols
+			x = col * cell_size
+			y = FONTHEIGHT + (row * cell_size)
+			cellrect = pygame.Rect(x, y, cell_size, cell_size)
+			pygame.draw.rect(screen, TEXTCOLOR, cellrect)
+			screen.blit(INVENTORY_MAINHAND.draw(), (x, y))
+			if cellrect.collidepoint(pygame.mouse.get_pos()):
+				if clicked:
+					INVENTORY.append(INVENTORY_MAINHAND)
+					INVENTORY_MAINHAND = None
+		# Rest of inventory
+		for i in [i + 1 for i in range(len(INVENTORY))]:
 			row = i // num_cols
 			col = i % num_cols
 			x = col * cell_size
 			y = FONTHEIGHT + (row * cell_size)
 			cellrect = pygame.Rect(x, y, cell_size, cell_size)
-			pygame.draw.rect(screen, BACKGROUND, cellrect)
-			pygame.draw.rect(screen, TEXTCOLOR, cellrect, 1)
-			screen.blit(INVENTORY[i].draw(), (x, y))
+			if cellrect.collidepoint(pygame.mouse.get_pos()):
+				pygame.draw.rect(screen, TEXTCOLOR, cellrect)
+				if clicked and not INVENTORY_MAINHAND:
+					INVENTORY_MAINHAND = INVENTORY[i - 1]
+					INVENTORY.remove(INVENTORY[i - 1])
+					break
+			else:
+				pygame.draw.rect(screen, BACKGROUND, cellrect)
+				pygame.draw.rect(screen, TEXTCOLOR, cellrect, 1)
+			screen.blit(INVENTORY[i - 1].draw(), (x, y))
 		# Flip
 		pygame.display.flip()
 		c.tick(60)
@@ -264,6 +295,8 @@ while running:
 			if [entity.x, entity.y] == [*route[1]]:
 				move = False
 				entity.health -= 1
+				if INVENTORY_MAINHAND and INVENTORY_MAINHAND.name == "sword":
+					entity.health -= 5
 			entity.frame()
 		if move:
 			playerpos = [*route[1]]
