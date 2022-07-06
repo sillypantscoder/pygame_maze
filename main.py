@@ -53,7 +53,7 @@ class Monster:
 	def __init__(self, x: int, y: int):
 		self.x = x
 		self.y = y
-		self.health = maxhealth // 3
+		self.health = maxhealth // 5
 	def frame(self):
 		global health
 		self.doaction()
@@ -89,6 +89,11 @@ class Monster:
 class Item:
 	def __init__(self):
 		pass
+	def draw(self):
+		s = pygame.Surface((ZOOM, ZOOM), pygame.SRCALPHA)
+		s.fill((0, 0, 0, 0))
+		pygame.draw.circle(s, TILEBOARDWALK, (ZOOM // 2, ZOOM // 2), ZOOM // 3)
+		return s
 
 class DroppedItem:
 	def __init__(self, pos: "list[int]", i: Item):
@@ -102,7 +107,8 @@ class DroppedItem:
 		# item textures they will be rendered here
 		if not BOARD[self.y][self.x]["light"]:
 			return
-		pygame.draw.circle(screen, TILEBOARDWALK, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 3)
+		#pygame.draw.circle(screen, TILEBOARDWALK, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 3)
+		screen.blit(self.item.draw(), ((self.x * ZOOM) + offset[0], (self.y * ZOOM) + offset[1]))
 
 ENTITIES = [Monster(*random.choice(validspawn)) for x in range(10)]
 [ITEMS.append(DroppedItem(random.choice(validspawn), Item())) for i in range(20)];
@@ -182,6 +188,44 @@ def checkLight():
 screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
 pygame.key.set_repeat(300, 50)
 
+def DIALOG_INVENTORY():
+	global screen
+	global SCREENSIZE
+	c = pygame.time.Clock()
+	running = True
+	while running:
+		clicked = None
+		for event in pygame.event.get():
+			if event.type == pygame.QUIT:
+				return False
+			elif event.type == pygame.VIDEORESIZE:
+				SCREENSIZE = event.size
+				screen = pygame.display.set_mode(SCREENSIZE, pygame.RESIZABLE)
+			elif event.type == pygame.KEYDOWN:
+				if event.key == pygame.K_ESCAPE:
+					return True
+			elif event.type == pygame.MOUSEBUTTONDOWN:
+				clicked = pygame.mouse.get_pos()
+		# Header
+		pygame.draw.rect(screen, BACKGROUND, pygame.Rect(0, 0, SCREENSIZE[0], FONTHEIGHT))
+		screen.blit(FONT.render("Inventory", True, TEXTCOLOR), (0, 0))
+		# Grid
+		num_cols = 4
+		cell_size = SCREENSIZE[0] // num_cols
+		for i in range(len(INVENTORY)):
+			row = i // num_cols
+			col = i % num_cols
+			x = col * cell_size
+			y = FONTHEIGHT + (row * cell_size)
+			cellrect = pygame.Rect(x, y, cell_size, cell_size)
+			pygame.draw.rect(screen, BACKGROUND, cellrect)
+			pygame.draw.rect(screen, TEXTCOLOR, cellrect, 1)
+			screen.blit(INVENTORY[i].draw(), (x, y))
+		# Flip
+		pygame.display.flip()
+		c.tick(60)
+	return True
+
 c = pygame.time.Clock()
 running = True
 checkLight()
@@ -202,6 +246,8 @@ while running:
 				playerMove("left")
 			elif event.key == pygame.K_RIGHT:
 				playerMove("right")
+			elif event.key == pygame.K_e:
+				running = DIALOG_INVENTORY()
 		elif event.type == pygame.MOUSEBUTTONDOWN:
 			clicked = pygame.mouse.get_pos()
 	# Route
