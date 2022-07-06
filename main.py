@@ -88,8 +88,9 @@ class Monster:
 		pygame.draw.circle(screen, PLAYERCOLOR, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 2)
 
 class Item:
-	def __init__(self, name):
+	def __init__(self, name, stacksize: int = 1):
 		self.name = name
+		self.stacksize = stacksize
 	def draw(self):
 		s = pygame.Surface((ZOOM, ZOOM), pygame.SRCALPHA)
 		s.fill((0, 0, 0, 0))
@@ -101,7 +102,13 @@ class DroppedItem:
 		self.item = i
 		self.x, self.y = pos
 	def collect(self):
-		INVENTORY.append(self.item)
+		n = False
+		for i in INVENTORY:
+			if i.name == self.item.name:
+				i.stacksize += self.item.stacksize
+				n = True
+		if not n:
+			INVENTORY.append(self.item)
 		ITEMS.remove(self)
 	def draw(self, screen, offset):
 		# Whenever I decide to get around to implementing
@@ -231,6 +238,10 @@ def DIALOG_INVENTORY():
 			cellrect = pygame.Rect(x, y, cell_size, cell_size)
 			pygame.draw.rect(screen, TEXTCOLOR, cellrect)
 			screen.blit(INVENTORY_MAINHAND.draw(), (x, y))
+			# Text
+			if INVENTORY_MAINHAND.stacksize > 1:
+				t = FONT.render(f"(x{INVENTORY_MAINHAND.stacksize})", True, TILEBOARDWALK)
+				screen.blit(t, (x + cell_size - t.get_width(), y + cell_size - t.get_height()))
 			if cellrect.collidepoint(pygame.mouse.get_pos()):
 				if clicked:
 					INVENTORY.append(INVENTORY_MAINHAND)
@@ -251,6 +262,11 @@ def DIALOG_INVENTORY():
 			else:
 				pygame.draw.rect(screen, BACKGROUND, cellrect)
 				pygame.draw.rect(screen, TEXTCOLOR, cellrect, 1)
+			# Text
+			if INVENTORY[i - 1].stacksize > 1:
+				t = FONT.render(f"(x{INVENTORY[i - 1].stacksize})", True, TILEBOARDWALK)
+				screen.blit(t, (x + cell_size - t.get_width(), y + cell_size - t.get_height()))
+			# Item
 			screen.blit(INVENTORY[i - 1].draw(), (x, y))
 		# Flip
 		pygame.display.flip()
