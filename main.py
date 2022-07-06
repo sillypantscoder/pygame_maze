@@ -1,9 +1,10 @@
 import pygame
-import threading
 import random
 import boardgen_points as boardgen
 from boardconst import *
 import pathfind
+import json
+import os
 
 pygame.font.init()
 
@@ -35,6 +36,11 @@ TARGET: "list[int]" = [*playerpos]
 INVENTORY: "list[Item]" = []
 ITEMS: "list[DroppedItem]" = []
 INVENTORY_MAINHAND = None
+ITEMDEFS = {}
+for f in os.listdir("items"):
+	i = open("items/" + f, "r")
+	ITEMDEFS[f[:-4]] = json.loads(i.read())
+	i.close()
 
 # Textures
 TEXTURES: "list[pygame.Surface]" = []
@@ -96,6 +102,8 @@ class Item:
 		s.fill((0, 0, 0, 0))
 		s.blit(FONT.render(self.name, True, TEXTCOLOR), (0, 0))
 		return s
+	def getdef(self):
+		return ITEMDEFS[self.name]
 
 class DroppedItem:
 	def __init__(self, pos: "list[int]", i: Item):
@@ -119,7 +127,7 @@ class DroppedItem:
 		screen.blit(self.item.draw(), ((self.x * ZOOM) + offset[0], (self.y * ZOOM) + offset[1]))
 
 def newItem():
-	i = random.choices(["item", "sword"], weights=[10, 1], k=1)[0]
+	i = random.choices([n for n in ITEMDEFS.keys()], weights=[n["chance"] for n in ITEMDEFS.values()], k=1)[0]
 	ITEMS.append(DroppedItem(random.choice(validspawn), Item(i)))
 
 ENTITIES = [Monster(*random.choice(validspawn)) for x in range(10)]
@@ -243,6 +251,8 @@ def DIALOG_INVENTORY():
 				t = FONT.render(f"(x{INVENTORY_MAINHAND.stacksize})", True, TILEBOARDWALK)
 				screen.blit(t, (x + cell_size - t.get_width(), y + cell_size - t.get_height()))
 			if cellrect.collidepoint(pygame.mouse.get_pos()):
+				pygame.draw.rect(screen, BACKGROUND, pygame.Rect(0, 0, SCREENSIZE[0], FONTHEIGHT))
+				screen.blit(FONT.render(f"- In Main Hand - {INVENTORY_MAINHAND.getdef()['name']}", True, TEXTCOLOR), (0, 0))
 				if clicked:
 					INVENTORY.append(INVENTORY_MAINHAND)
 					INVENTORY_MAINHAND = None
@@ -255,7 +265,9 @@ def DIALOG_INVENTORY():
 			cellrect = pygame.Rect(x, y, cell_size, cell_size)
 			if cellrect.collidepoint(pygame.mouse.get_pos()):
 				pygame.draw.rect(screen, TEXTCOLOR, cellrect)
-				if clicked and not INVENTORY_MAINHAND:
+				pygame.draw.rect(screen, BACKGROUND, pygame.Rect(0, 0, SCREENSIZE[0], FONTHEIGHT))
+				screen.blit(FONT.render(f"- {INVENTORY[i - 1].getdef()['name']}", True, TEXTCOLOR), (0, 0))
+				if clicked and not INVENTORY_MAINHAND and ITEMDEFS[INVENTORY[i - 1].name]["type"] == "melee":
 					INVENTORY_MAINHAND = INVENTORY[i - 1]
 					INVENTORY.remove(INVENTORY[i - 1])
 					break
@@ -311,8 +323,8 @@ while running:
 			if [entity.x, entity.y] == [*route[1]]:
 				move = False
 				entity.health -= 1
-				if INVENTORY_MAINHAND and INVENTORY_MAINHAND.name == "sword":
-					entity.health -= 5
+				if INVENTORY_MAINHAND:
+					entity.health -= INVENTORY_MAINHAND.getdef()["params"]["damage"]
 			entity.frame()
 		if move:
 			playerpos = [*route[1]]

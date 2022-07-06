@@ -1,0 +1,8 @@
+{
+	"name": "Popsicle",
+	"chance": 10,
+	"type": "melee",
+	"params": {
+		"damage": 100
+	}
+}
