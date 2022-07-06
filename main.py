@@ -29,9 +29,9 @@ FONTHEIGHT = FONT.render("0", True, TEXTCOLOR).get_height()
 validspawn = [(x, y) for x in range(len(BOARD[0])) for y in range(len(BOARD)) if BOARD[y][x]["state"] == 1]
 playerpos = [*random.choice(validspawn)]
 SCREENSIZE = [500, 500 + FONTHEIGHT]
-maxhealth = 10
+maxhealth = 20
 health = maxhealth + 0
-ROUTE: "list[Action]" = []
+TARGET: "list[int]" = [*playerpos]
 
 # Textures
 TEXTURES: "list[pygame.Surface]" = []
@@ -47,82 +47,34 @@ for i in ALLBLOCKS:
 	s.fill((0, 0, 0, 200))
 	DARKTEXTURES[i].blit(s, (0, 0))
 
-class Action:
-	def __init__(self, to: "Monster | None" = None):
-		self.to = to
-	def run(self):
-		pass
-
-class MoveAction(Action):
-	def __init__(self, to: "Monster | None" = None, pos: "tuple[int, int]" = (0, 0)):
-		super().__init__(to)
-		self.pos = pos
-	def run(self):
-		global playerpos
-		if self.to != None:
-			self.to.x, self.to.y = self.pos
-		else:
-			playerpos = [*self.pos]
-
-class AttackAction(Action):
-	def __init__(self, to: "Monster | None" = None):
-		super().__init__(to)
-	def run(self):
-		if self.to == None:
-			# Attack the player
-			global health
-			health -= 1
-		else:
-			# Attack a monster
-			self.to.health -= 1
-
-class ClickAction(Action):
-	def __init__(self, pos: "tuple[int, int]"):
-		super().__init__()
-		self.pos = pos
-	def run(self):
-		# Check if the player clicked on a monster.
-		c = False
-		for m in ENTITIES:
-			if m.x == self.pos[0] and m.y == self.pos[1]:
-				AttackAction(m).run()
-				c = True
-		# Otherwise, move here.
-		if not c:
-			MoveAction(None, self.pos).run()
-
 class Monster:
 	def __init__(self, x: int, y: int):
 		self.x = x
 		self.y = y
-		self.action: "Action | None" = None
 		self.health = maxhealth // 3
 	def frame(self):
 		global health
-		# Check if we need to figure out what to do next
-		if self.action == None:
-			self.newaction()
-		# Ok then
-		self.action.run()
-		self.action = None
+		self.doaction()
 		# Check if we're dead
 		if self.health <= 0:
 			self.die()
 			print("Monster died...")
 	def die(self):
 		if self in ENTITIES: ENTITIES.remove(self)
-		self.action = Action(self)
-	def newaction(self):
+	def doaction(self):
 		global health
+		global TARGET
 		# Pathfind to player
 		path = pathfind.pathfind(boardgen.board, (self.x, self.y), playerpos)
 		if path:
 			if len(path) > 2:
 				# Move towards player
-				self.action = MoveAction(self, path[1])
+				if [self.x, self.y] == TARGET:
+					TARGET = [*path[1]]
+				self.x, self.y = path[1]
 			else:
 				# We're at the player, attack!
-				self.action = AttackAction()
+				health -= 1
 		else:
 			# can't find the player...
 			self.die()
@@ -162,27 +114,15 @@ def posAfterMoved(pos, dir):
 		return [pos[0]+1, pos[1]]
 
 def finalPlayerPos():
-	newPos = [*playerpos]
-	for a in ROUTE:
-		if isinstance(a, MoveAction):
-			newPos = [*a.pos]
-		elif isinstance(a, ClickAction):
-			c = False
-			for m in ENTITIES:
-				if m.x == newPos[0] and m.y == newPos[1]:
-					c = True
-			# Otherwise, move here.
-			if not c:
-				newPos = [*a.pos]
-	return newPos
+	return TARGET
 
 def playerMove(direction: str) -> None:
 	"""Moves the player in the given direction."""
-	global playerpos
+	global TARGET
 	newPos = posAfterMoved(finalPlayerPos(), direction)
 	if not isCellThatPlayerCanMoveInto(newPos):
 		return
-	ROUTE.append(ClickAction(newPos))
+	TARGET = newPos
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
@@ -246,8 +186,9 @@ while running:
 		elif event.type == pygame.MOUSEBUTTONDOWN:
 			clicked = pygame.mouse.get_pos()
 	# Route
-	if len(ROUTE) > 0:
-		ROUTE.pop(0).run()
+	route = pathfind.pathfind(boardgen.board, playerpos, TARGET)
+	if route and len(route) >= 2:
+		playerpos = [*route[1]]
 		# Tick the entities
 		for entity in ENTITIES:
 			entity.frame()
@@ -265,22 +206,7 @@ while running:
 			screen.blit((TEXTURES if cell["light"] else DARKTEXTURES)[cell["state"]], cellrect)
 			# Pathfinding
 			if clicked and cellrect.collidepoint(clicked):
-				# Find a path to the block
-				path = pathfind.pathfind(boardgen.board, playerpos, (x, y))
-				# Move the player
-				if path != None:
-					pr = [*playerpos]
-					for p in path[1:]:
-						# Figure out the direction to move
-						if p[0] > pr[0]:
-							playerMove("right")
-						elif p[0] < pr[0]:
-							playerMove("left")
-						elif p[1] > pr[1]:
-							playerMove("down")
-						elif p[1] < pr[1]:
-							playerMove("up")
-						pr = [*p]
+				TARGET = [x, y]
 	# Draw the entities
 	for entity in ENTITIES:
 		entity.draw(screen, offset)
