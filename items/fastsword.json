@@ -1,0 +1,9 @@
+{
+	"name": "Fast Sword",
+	"chance": 1,
+	"type": "melee",
+	"params": {
+		"damage": 1,
+		"speed": 0.1
+	}
+}

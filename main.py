@@ -41,6 +41,7 @@ for f in os.listdir("items"):
 	i = open("items/" + f, "r")
 	ITEMDEFS[f[:-4]] = json.loads(i.read())
 	i.close()
+TIME = 0
 
 # Textures
 TEXTURES: "list[pygame.Surface]" = []
@@ -61,15 +62,18 @@ class Monster:
 		self.x = x
 		self.y = y
 		self.health = maxhealth // 5
+		self.time = TIME + 1
 	def frame(self):
 		global health
-		self.doaction()
+		while self.time <= TIME:
+			self.doaction()
 		# Check if we're dead
 		if self.health <= 0:
 			self.die()
 			print("Monster died...")
 	def die(self):
 		if self in ENTITIES: ENTITIES.remove(self)
+		self.time += 10
 	def doaction(self):
 		global health
 		global TARGET
@@ -79,9 +83,11 @@ class Monster:
 			if len(path) > 2:
 				# Move towards player
 				self.x, self.y = path[1]
+				self.time += 1
 			else:
 				# We're at the player, attack!
 				health -= 1
+				self.time += 1.5
 		else:
 			# can't find the player...
 			self.die()
@@ -313,6 +319,7 @@ while running:
 	route = pathfind.pathfind(boardgen.board, playerpos, TARGET)
 	if route and len(route) > 2:
 		playerpos = [*route[1]]
+		TIME += 1
 		# Tick the entities
 		for entity in ENTITIES:
 			entity.frame()
@@ -325,9 +332,12 @@ while running:
 				entity.health -= 1
 				if INVENTORY_MAINHAND:
 					entity.health -= INVENTORY_MAINHAND.getdef()["params"]["damage"]
+					TIME += INVENTORY_MAINHAND.getdef()["params"]["speed"]
+				else: TIME += 1
 			entity.frame()
 		if move:
 			playerpos = [*route[1]]
+			TIME += 1
 		else:
 			# We're attacking-- don't move
 			TARGET = [*playerpos]

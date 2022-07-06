@@ -3,6 +3,7 @@
 	"chance": 1,
 	"type": "melee",
 	"params": {
-		"damage": 4
+		"damage": 4,
+		"speed": 0.5
 	}
 }
