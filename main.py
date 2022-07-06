@@ -32,6 +32,8 @@ SCREENSIZE = [500, 500 + FONTHEIGHT]
 maxhealth = 20
 health = maxhealth + 0
 TARGET: "list[int]" = [*playerpos]
+INVENTORY: "list[Item]" = []
+ITEMS: "list[DroppedItem]" = []
 
 # Textures
 TEXTURES: "list[pygame.Surface]" = []
@@ -69,8 +71,6 @@ class Monster:
 		if path:
 			if len(path) > 2:
 				# Move towards player
-				if [self.x, self.y] == TARGET:
-					TARGET = [*path[1]]
 				self.x, self.y = path[1]
 			else:
 				# We're at the player, attack!
@@ -86,7 +86,24 @@ class Monster:
 			return
 		pygame.draw.circle(screen, PLAYERCOLOR, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 2)
 
+class Item:
+	def __init__(self):
+		pass
+
+class DroppedItem:
+	def __init__(self, pos: "list[int]", i: Item):
+		self.item = i
+		self.x, self.y = pos
+	def collect(self):
+		INVENTORY.append(self.item)
+		ITEMS.remove(self)
+	def draw(self, screen, offset):
+		# Whenever I decide to get around to implementing
+		# item textures they will be rendered here
+		pygame.draw.circle(screen, TILEBOARDWALK, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 3)
+
 ENTITIES = [Monster(*random.choice(validspawn)) for x in range(10)]
+[ITEMS.append(DroppedItem(random.choice(validspawn), Item())) for i in range(20)];
 
 def insideBoard(x: int, y: int) -> bool:
 	"""Checks whether the given coordinates are inside the board."""
@@ -210,6 +227,11 @@ while running:
 	# Draw the entities
 	for entity in ENTITIES:
 		entity.draw(screen, offset)
+	# Draw the items
+	for i in ITEMS:
+		i.draw(screen, offset)
+		if [i.x, i.y] == playerpos:
+			i.collect()
 	# Draw the player
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
