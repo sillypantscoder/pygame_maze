@@ -100,6 +100,8 @@ class DroppedItem:
 	def draw(self, screen, offset):
 		# Whenever I decide to get around to implementing
 		# item textures they will be rendered here
+		if not BOARD[self.y][self.x]["light"]:
+			return
 		pygame.draw.circle(screen, TILEBOARDWALK, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 3)
 
 ENTITIES = [Monster(*random.choice(validspawn)) for x in range(10)]
@@ -139,7 +141,7 @@ def playerMove(direction: str) -> None:
 	newPos = posAfterMoved(finalPlayerPos(), direction)
 	if not isCellThatPlayerCanMoveInto(newPos):
 		return
-	TARGET = newPos
+	TARGET = [*newPos]
 
 def addBlock(x: int, y: int) -> None:
 	"""Adds a block to the board."""
@@ -204,11 +206,24 @@ while running:
 			clicked = pygame.mouse.get_pos()
 	# Route
 	route = pathfind.pathfind(boardgen.board, playerpos, TARGET)
-	if route and len(route) >= 2:
+	if route and len(route) > 2:
 		playerpos = [*route[1]]
 		# Tick the entities
 		for entity in ENTITIES:
 			entity.frame()
+		checkLight()
+	elif route and len(route) == 2:
+		move = True
+		for entity in ENTITIES:
+			if [entity.x, entity.y] == [*route[1]]:
+				move = False
+				entity.health -= 1
+			entity.frame()
+		if move:
+			playerpos = [*route[1]]
+		else:
+			# We're attacking-- don't move
+			TARGET = [*playerpos]
 		checkLight()
 	# Drawing
 	offset = [(SCREENSIZE[0] / 2) + (ZOOM / -2) + (playerpos[0] * -ZOOM), (SCREENSIZE[1] / 2) + (ZOOM / -2) + (playerpos[1] * -ZOOM)]
@@ -232,6 +247,7 @@ while running:
 		i.draw(screen, offset)
 		if [i.x, i.y] == playerpos:
 			i.collect()
+
 	# Draw the player
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
