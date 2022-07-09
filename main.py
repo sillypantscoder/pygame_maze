@@ -5,6 +5,8 @@ from boardconst import *
 import pathfind
 import json
 import os
+import base64
+import io
 
 pygame.font.init()
 
@@ -44,6 +46,13 @@ for f in os.listdir("items"):
 TIME = 0
 
 # Textures
+
+def base64ToSurface(b: str) -> pygame.Surface:
+	"""Converts a base64 string to a pygame surface."""
+	data = base64.b64decode(b)
+	img = pygame.image.load(io.BytesIO(data), ".png")
+	return img
+
 TEXTURES: "list[pygame.Surface]" = []
 DARKTEXTURES: "list[pygame.Surface]" = []
 colors = [(0, 0, 0), (30, 30, 200), (255, 40, 40), (217, 106, 22), (102, 53, 34)]
@@ -63,6 +72,7 @@ class Monster:
 		self.y = y
 		self.health = maxhealth // 5
 		self.time = TIME + 1
+		self.texture = base64ToSurface("iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAAAXNSR0IArs4c6QAAAdVJREFUaEPtmOGSwjAIhPX9H9obO9ZLUgjLAq3Tyf07TQgfC4T4fNzk73kTjscC+TUllyKKIi+nUmmBZAypzgYoGD+6mHkNvLzOIgp9nPD6QoNsDBUgb7sNBQWEbipRQlKLBbJASlWYpZ033UyQqlTKrh0N5DIlRkBUGRXkTCV2J7QzERgJRC1s60AkXZSIbx9ngky7U0udpRgaHEuVURGzzaIHI+p4AzOD6WwhUfYergExdlJBhluYvukZZdNBWhhERabAJ7e+2Gm7wHicYlJjdy5h7wHm/cHXfw9IJMWYtBqCoIN4IUaQysm4TTOtTjZFGAjBOF34SKuGFImCeByJri1VJOqcZ/8C8UTrjLVLEU+UxTeBxwCwtlQRcWYQnMrojjOQ7S5jDtEAdlvW94AAhyWpIIyDh4cPQ/H/+5c4ouwmIVUiDkWGxWYkmk6/EEwEYpx8A6mcC8I4kvSOgUCmhR8Zv8mS6LahL8R2k1gvV4LMIKQnRQdz1hsDUSsC8m0AVwNZEJYiY6Au+z04GwRq0UiaoGua9mROQeYCaWRiWy8KMNw5kI/QIm3+qwLyKDFetN5gdY1A/IewyABkgYgNgWAI+8OmVsDXmq0LpCauvNXbKPIHEVtxMxbvwcwAAAAASUVORK5CYIIA")
 	def frame(self):
 		global health
 		while self.time <= TIME:
@@ -93,20 +103,27 @@ class Monster:
 			self.die()
 			# so we kill ourselves. logical course of action.
 			print("Monster died")
-	def draw(self, screen, offset):
+	def draw(self, screen: pygame.Surface, offset):
 		# Check if we're on a hidden tile
 		if not BOARD[self.y][self.x]["light"]:
 			return
-		pygame.draw.circle(screen, PLAYERCOLOR, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 2)
+		screen.blit(self.texture, ((self.x * ZOOM) + offset[0], (self.y * ZOOM) + offset[1]))
+
+def addItemToPlayerInventory(item: "Item"):
+	n = False
+	for i in INVENTORY:
+		if i.name == item.name:
+			i.stacksize += item.stacksize
+			n = True
+	if not n:
+		INVENTORY.append(item)
 
 class Item:
 	def __init__(self, name, stacksize: int = 1):
 		self.name = name
 		self.stacksize = stacksize
 	def draw(self):
-		s = pygame.Surface((ZOOM, ZOOM), pygame.SRCALPHA)
-		s.fill((0, 0, 0, 0))
-		s.blit(FONT.render(self.name, True, TEXTCOLOR), (0, 0))
+		s = base64ToSurface(self.getdef()["texture"])
 		return s
 	def getdef(self):
 		return ITEMDEFS[self.name]
@@ -116,20 +133,11 @@ class DroppedItem:
 		self.item = i
 		self.x, self.y = pos
 	def collect(self):
-		n = False
-		for i in INVENTORY:
-			if i.name == self.item.name:
-				i.stacksize += self.item.stacksize
-				n = True
-		if not n:
-			INVENTORY.append(self.item)
+		addItemToPlayerInventory(self.item)
 		ITEMS.remove(self)
-	def draw(self, screen, offset):
-		# Whenever I decide to get around to implementing
-		# item textures they will be rendered here
+	def draw(self, screen: pygame.Surface, offset):
 		if not BOARD[self.y][self.x]["light"]:
 			return
-		#pygame.draw.circle(screen, TILEBOARDWALK, ((self.x * ZOOM) + offset[0] + (ZOOM // 2), (self.y * ZOOM) + offset[1] + (ZOOM // 2)), ZOOM // 3)
 		screen.blit(self.item.draw(), ((self.x * ZOOM) + offset[0], (self.y * ZOOM) + offset[1]))
 
 def newItem():
@@ -260,7 +268,7 @@ def DIALOG_INVENTORY():
 				pygame.draw.rect(screen, BACKGROUND, pygame.Rect(0, 0, SCREENSIZE[0], FONTHEIGHT))
 				screen.blit(FONT.render(f"- In Main Hand - {INVENTORY_MAINHAND.getdef()['name']}", True, TEXTCOLOR), (0, 0))
 				if clicked:
-					INVENTORY.append(INVENTORY_MAINHAND)
+					addItemToPlayerInventory(INVENTORY_MAINHAND)
 					INVENTORY_MAINHAND = None
 		# Rest of inventory
 		for i in [i + 1 for i in range(len(INVENTORY))]:
