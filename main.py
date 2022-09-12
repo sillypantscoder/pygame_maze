@@ -45,6 +45,16 @@ for f in os.listdir("items"):
 	i.close()
 TIME = 0
 
+def getPathfindingBoard():
+	"""Returns a list of lists of integers representing the board."""
+	def isValidCell(x: int, y: int) -> bool:
+		"""Checks whether the given cell is valid."""
+		for e in ENTITIES:
+			if e.x == x and e.y == y:
+				return False
+		return BOARD[y][x]["state"] not in WALLBLOCKS
+	return [[isValidCell(x, y) for x in range(len(BOARD[y]))] for y in range(len(BOARD))]
+
 # Textures
 
 def base64ToSurface(b: str) -> pygame.Surface:
@@ -88,7 +98,7 @@ class Monster:
 		global health
 		global TARGET
 		# Pathfind to player
-		path = pathfind.pathfind(boardgen.board, (self.x, self.y), playerpos)
+		path = pathfind.pathfind(getPathfindingBoard(), (self.x, self.y), playerpos)
 		if path:
 			if len(path) > 2:
 				# Move towards player
@@ -109,14 +119,30 @@ class Monster:
 			return
 		screen.blit(self.texture, ((self.x * ZOOM) + offset[0], (self.y * ZOOM) + offset[1]))
 
+def addItemStackToPlayerInventory(item: "Item"):
+	numLeftToAdd = item.stacksize
+	maxStack = item.getdef()["stacksize"]
+	for existing in INVENTORY:
+		if existing.name == item.name:
+			space = maxStack - existing.stacksize
+			toAdd = min(space, numLeftToAdd)
+			existing.stacksize += toAdd
+			numLeftToAdd -= toAdd
+			if numLeftToAdd == 0:
+				return
+	INVENTORY.append(item)
+
 def addItemToPlayerInventory(item: "Item"):
-	n = False
+	if not item:
+		return # sometimes we get None when adding extra items
 	for i in INVENTORY:
-		if i.name == item.name:
+		if i.name == item.name and i.stacksize < i.getdef()["stacksize"]:
 			i.stacksize += item.stacksize
-			n = True
-	if not n:
-		INVENTORY.append(item)
+			extras = i.chop_extra_items()
+			if extras:
+				INVENTORY.append(extras)
+			return
+	INVENTORY.append(item)
 
 class Item:
 	def __init__(self, name, stacksize: int = 1):
@@ -127,6 +153,12 @@ class Item:
 		return s
 	def getdef(self):
 		return ITEMDEFS[self.name]
+	def chop_extra_items(self):
+		"""Checks whether we have too many items in this stack. Chops off the extras and returns the remaining items."""
+		if self.stacksize > self.getdef()["stacksize"]:
+			returnItem = Item(self.name, self.stacksize - self.getdef()["stacksize"])
+			self.stacksize = self.getdef()["stacksize"]
+			return returnItem
 
 class DroppedItem:
 	def __init__(self, pos: "list[int]", i: Item):
@@ -372,7 +404,6 @@ while running:
 		i.draw(screen, offset)
 		if [i.x, i.y] == playerpos:
 			i.collect()
-
 	# Draw the player
 	playerrect = pygame.Rect((playerpos[0] * ZOOM) + (ZOOM / 3), (playerpos[1] * ZOOM) + (ZOOM / 3), ZOOM / 3, ZOOM / 3)
 	playerrect.move_ip(*offset)
