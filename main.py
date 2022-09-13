@@ -7,16 +7,16 @@ screensize = [500, 500]
 screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
 
 cellsize = 10
-boardsize = [60, 60]
+boardsize = [*boardgen.boardsize]
 BOARD = [
 	[boardgen.board[i][j] for i in range(boardsize[0])]
 		for j in range(boardsize[1])
 ]
 
 def draw(t, rect):
-	if t == "air":
+	if t == "wall":
 		pygame.draw.rect(screen, WHITE, rect)
-	elif t == "stuff":
+	elif t == "ground":
 		pygame.draw.rect(screen, (0, 0, 0), rect)
 	else:
 		raise Exception(f"Dunno what {t} is, something's wrong :/")
