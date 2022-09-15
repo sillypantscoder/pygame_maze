@@ -3,6 +3,7 @@ import random
 import boardgen
 import threading
 from line_points import get_line
+import time
 
 WHITE = (255, 255, 255)
 screensize = [500, 500]
@@ -24,12 +25,13 @@ class Cell:
 	def canwalk(self) -> bool:
 		return self.state == "ground"
 	def refreshLight(self):
-		points = get_line(self.pos, playerpos)
-		for point in points:
-			if not BOARD[point[0]][point[1]].canwalk():
-				self.light = 0 if self.light == 0 else 1
-				return
-		self.light = 2
+		for playerpos in [p.pos for p in ENTITIES if isinstance(p, Player)]:
+			points = get_line(self.pos, playerpos)
+			for point in points:
+				if not BOARD[point[0]][point[1]].canwalk():
+					self.light = 0 if self.light == 0 else 1
+					return
+			self.light = 2
 
 cellsize = 10
 boardsize = [*boardgen.boardsize]
@@ -37,41 +39,71 @@ BOARD = [
 	[Cell((j, i), boardgen.board[i][j]) for i in range(boardsize[0])]
 		for j in range(boardsize[1])
 ]
+lightrefreshtime = [-1]
+
+# ENTITIES
+class Entity:
+	def __init__(self, pos):
+		self.pos: list = pos
+	def draw(self):
+		pygame.draw.rect(screen, (0, 255, 255), pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize))
+	def getmove(self):
+		return self.pos
+
+class BadThing(Entity):
+	def getmove(self):
+		retpos = [*self.pos]
+		for playerpos in [p.pos for p in ENTITIES if isinstance(p, Player)]:
+			if playerpos[0] > self.pos[0] and BOARD[self.pos[0] + 1][self.pos[1]].canwalk():
+				retpos[0] += 1
+			if playerpos[0] < self.pos[0] and BOARD[self.pos[0] - 1][self.pos[1]].canwalk():
+				retpos[0] -= 1
+			if playerpos[1] > self.pos[1] and BOARD[self.pos[0]][self.pos[1] + 1].canwalk():
+				retpos[1] += 1
+			if playerpos[1] < self.pos[1] and BOARD[self.pos[0]][self.pos[1] - 1].canwalk():
+				retpos[1] -= 1
+		return retpos
+
+class Player(Entity):
+	def draw(self):
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize))
+	def trygetmove(self):
+		if inputkey == pygame.K_UP:
+			return [self.pos[0], self.pos[1] - 1]
+		elif inputkey == pygame.K_DOWN:
+			return [self.pos[0], self.pos[1] + 1]
+		elif inputkey == pygame.K_LEFT:
+			return [self.pos[0] - 1, self.pos[1]]
+		elif inputkey == pygame.K_RIGHT:
+			return [self.pos[0] + 1, self.pos[1]]
+	def getmove(self):
+		global inputkey
+		inputkey = -1
+		r = None
+		while ((not r) or (not BOARD[r[0]][r[1]].canwalk())) and running:
+			r = self.trygetmove()
+			time.sleep(0.01)
+		return r
 
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
-playerpos = random.choice(validspawn)
+ENTITIES: "list[Entity]" = [Player(random.choice(validspawn)), BadThing(random.choice(validspawn))]
 inputkey = -1
 pygame.key.set_repeat(500, 10)
 
 def PLAYERTHREAD():
-	global playerpos
 	global running
-	needslightrefresh = [-1]
-	def playerMove(newX, newY):
-		global playerpos
+	global lightrefreshtime
+	lightrefreshtime = [1]
+	def doMove(e: Entity, newX, newY):
 		if BOARD[newX][newY].canwalk():
-			playerpos = [newX, newY]
-			if needslightrefresh[0] == -1:
-				needslightrefresh[0] = 10 # Darn references
+			e.pos = [newX, newY]
+			if isinstance(e, Player) and lightrefreshtime[0] == -1:
+				lightrefreshtime[0] = 20
 	c = pygame.time.Clock()
 	while running:
-		if inputkey == pygame.K_UP:
-			playerMove(playerpos[0], playerpos[1] - 1)
-		elif inputkey == pygame.K_DOWN:
-			playerMove(playerpos[0], playerpos[1] + 1)
-		elif inputkey == pygame.K_LEFT:
-			playerMove(playerpos[0] - 1, playerpos[1])
-		elif inputkey == pygame.K_RIGHT:
-			playerMove(playerpos[0] + 1, playerpos[1])
-		# Light refresh
-		if needslightrefresh[0] >= 0:
-			needslightrefresh[0] -= 1
-		if needslightrefresh[0] == 0:
-			def lightrefresh():
-				for i in range(boardsize[0]):
-					for j in range(boardsize[1]):
-						BOARD[i][j].refreshLight()
-			threading.Thread(target=lightrefresh).start()
+		for e in ENTITIES:
+			m = e.getmove()
+			if running: doMove(e, *m)
 		c.tick(60)
 
 def MAIN():
@@ -82,7 +114,6 @@ def MAIN():
 	running = True
 	c = pygame.time.Clock()
 	while running:
-		inputkey = -1
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				running = False
@@ -103,7 +134,17 @@ def MAIN():
 				if BOARD[i][j].light == 2:
 					pygame.draw.rect(screen, BOARD[i][j].getColor(), pygame.Rect(i * cellsize, j * cellsize, cellsize, cellsize))
 		# Player
-		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(playerpos[0] * cellsize, playerpos[1] * cellsize, cellsize, cellsize))
+		for e in ENTITIES:
+			e.draw()
+		# Light refresh
+		if lightrefreshtime[0] >= 0:
+			lightrefreshtime[0] -= 1
+		if lightrefreshtime[0] == 0:
+			def lightrefresh():
+				for i in range(boardsize[0]):
+					for j in range(boardsize[1]):
+						BOARD[i][j].refreshLight()
+			threading.Thread(target=lightrefresh).start()
 		# Flip
 		pygame.display.flip()
 		c.tick(60)
