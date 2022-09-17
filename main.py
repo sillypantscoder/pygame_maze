@@ -46,8 +46,16 @@ lightrefreshtime = [-1]
 class Entity:
 	def __init__(self, pos):
 		self.pos: list = pos
+		self.maxhealth: int = 10
+		self.health: int = 10
 	def draw(self):
-		pygame.draw.rect(screen, (0, 255, 255), pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize))
+		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
+		pygame.draw.rect(screen, (0, 255, 255), entityrect)
+		# Health bar
+		barwidth = cellsize * 2.2
+		barheight = cellsize * 0.7
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
+		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
 	def getmove(self):
 		return self.pos
 
@@ -63,8 +71,18 @@ class BadThing(Entity):
 			return self.pos
 
 class Player(Entity):
+	def __init__(self, pos):
+		super().__init__(pos)
+		self.maxhealth = 50
+		self.health = 50
 	def draw(self):
-		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize))
+		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
+		pygame.draw.rect(screen, (255, 0, 0), entityrect)
+		# Health bar
+		barwidth = cellsize * 2.2
+		barheight = cellsize * 0.7
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
+		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
 	def trygetmove(self):
 		if inputkey == pygame.K_UP:
 			return [self.pos[0], self.pos[1] - 1]
@@ -94,9 +112,18 @@ def PLAYERTHREAD():
 	lightrefreshtime = [1]
 	def doMove(e: Entity, newX, newY):
 		if BOARD[newX][newY].canwalk():
-			e.pos = [newX, newY]
+			# 1. Refresh light
 			if isinstance(e, Player) and lightrefreshtime[0] == -1:
 				lightrefreshtime[0] = 20
+			# 2. Check for other entities
+			for entity in ENTITIES:
+				if entity.pos == [newX, newY]:
+					entity.health -= 1
+					if entity.health <= 0:
+						ENTITIES.remove(entity)
+					return
+			# 3. Move
+			e.pos = [newX, newY]
 	c = pygame.time.Clock()
 	while running:
 		for e in ENTITIES:
@@ -132,9 +159,10 @@ def MAIN():
 					screen.blit(overlay, (i * cellsize, j * cellsize))
 				if BOARD[i][j].light == 2:
 					pygame.draw.rect(screen, BOARD[i][j].getColor(), pygame.Rect(i * cellsize, j * cellsize, cellsize, cellsize))
-		# Player
+		# Drw entities
 		for e in ENTITIES:
-			e.draw()
+			if BOARD[e.pos[0]][e.pos[1]].light == 2:
+				e.draw()
 		# Light refresh
 		if lightrefreshtime[0] >= 0:
 			lightrefreshtime[0] -= 1
