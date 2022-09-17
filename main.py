@@ -1,3 +1,4 @@
+import math
 import pygame
 import random
 import boardgen
@@ -32,6 +33,10 @@ class Cell:
 				if not BOARD[point[0]][point[1]].canwalk():
 					self.light = 0 if self.light == 0 else 1
 					return
+			# We have a line of sight to this block
+			if math.dist(self.pos, playerpos) > lightrange:
+				self.light = 0 if self.light == 0 else 1
+				return
 			# We can see this block.
 			self.light = 2
 			for e in [p for p in ENTITIES if isinstance(p, Enemy)]:
@@ -44,7 +49,7 @@ BOARD = [
 	[Cell([j, i], boardgen.board[i][j]) for i in range(boardsize[0])]
 		for j in range(boardsize[1])
 ]
-lightrefreshtime = [-1]
+lightrange = 10
 
 # ENTITIES
 class Entity:
@@ -77,12 +82,16 @@ class Enemy(Entity):
 	def getmove(self):
 		if self.awake:
 			# Pathfind to player
-			player = random.choice([p for p in ENTITIES if isinstance(p, Player)])
-			mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
-			path = pathfind(mat, self.pos, player.pos)
-			if path:
-				return path[1]
+			if not True in [isinstance(p, Player) for p in ENTITIES]:
+				player = random.choice([p for p in ENTITIES if isinstance(p, Player)])
+				mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
+				path = pathfind(mat, self.pos, player.pos)
+				if path:
+					return path[1]
+				else:
+					return self.pos
 			else:
+				self.awake = False
 				return self.pos
 		else:
 			return self.pos
@@ -109,6 +118,9 @@ class Player(Entity):
 			return [self.pos[0] - 1, self.pos[1]]
 		elif inputkey == pygame.K_RIGHT:
 			return [self.pos[0] + 1, self.pos[1]]
+		elif inputkey == pygame.K_SPACE:
+			# Idle
+			return self.pos
 	def getmove(self):
 		global inputkey
 		inputkey = -1
@@ -125,24 +137,28 @@ pygame.key.set_repeat(500, 10)
 
 def PLAYERTHREAD():
 	global running
-	global lightrefreshtime
-	lightrefreshtime = [1]
+	def lightrefresh():
+		for playerpos in [e.pos for e in ENTITIES if isinstance(e, Player)]:
+			for i in range(playerpos[0] - lightrange - 1, playerpos[0] + lightrange + 2):
+				for j in range(playerpos[1] - lightrange - 1, playerpos[1] + lightrange + 2):
+					if 0 <= i < boardsize[0] and 0 <= j < boardsize[1]:
+						BOARD[i][j].refreshLight()
 	def doMove(e: Entity, newX, newY):
 		if BOARD[newX][newY].canwalk():
-			# 1. Refresh light
-			if isinstance(e, Player) and lightrefreshtime[0] == -1:
-				lightrefreshtime[0] = 20
-			# 2. Check for other entities
+			# 1. Check for other entities
 			for entity in ENTITIES:
 				if entity.pos == [newX, newY]:
 					entity.health -= 1
 					if isinstance(entity, Enemy):
-						entity.awake
+						entity.awake = True
 					if entity.health <= 0:
 						ENTITIES.remove(entity)
 					return
-			# 3. Move
+			# 2. Move
 			e.pos = [newX, newY]
+			# 3. Light update
+			lightrefresh()
+	lightrefresh()
 	c = pygame.time.Clock()
 	while running:
 		for e in ENTITIES:
@@ -180,17 +196,8 @@ def MAIN():
 					pygame.draw.rect(screen, BOARD[i][j].getColor(), pygame.Rect(i * cellsize, j * cellsize, cellsize, cellsize))
 		# Drw entities
 		for e in ENTITIES:
-			#if BOARD[e.pos[0]][e.pos[1]].light == 2:
-			e.draw()
-		# Light refresh
-		if lightrefreshtime[0] >= 0:
-			lightrefreshtime[0] -= 1
-		if lightrefreshtime[0] == 0:
-			def lightrefresh():
-				for i in range(boardsize[0]):
-					for j in range(boardsize[1]):
-						BOARD[i][j].refreshLight()
-			threading.Thread(target=lightrefresh).start()
+			if BOARD[e.pos[0]][e.pos[1]].light == 2:
+				e.draw()
 		# Flip
 		pygame.display.flip()
 		c.tick(60)
