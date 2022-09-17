@@ -4,6 +4,7 @@ import boardgen
 import threading
 from line_points import get_line
 import time
+from pathfind import pathfind
 
 WHITE = (255, 255, 255)
 screensize = [500, 500]
@@ -52,17 +53,14 @@ class Entity:
 
 class BadThing(Entity):
 	def getmove(self):
-		retpos = [*self.pos]
-		for playerpos in [p.pos for p in ENTITIES if isinstance(p, Player)]:
-			if playerpos[0] > self.pos[0] and BOARD[self.pos[0] + 1][self.pos[1]].canwalk():
-				retpos[0] += 1
-			if playerpos[0] < self.pos[0] and BOARD[self.pos[0] - 1][self.pos[1]].canwalk():
-				retpos[0] -= 1
-			if playerpos[1] > self.pos[1] and BOARD[self.pos[0]][self.pos[1] + 1].canwalk():
-				retpos[1] += 1
-			if playerpos[1] < self.pos[1] and BOARD[self.pos[0]][self.pos[1] - 1].canwalk():
-				retpos[1] -= 1
-		return retpos
+		# Pathfind to player
+		player = random.choice([p for p in ENTITIES if isinstance(p, Player)])
+		mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
+		path = pathfind(mat, self.pos, player.pos)
+		if path:
+			return path[1]
+		else:
+			return self.pos
 
 class Player(Entity):
 	def draw(self):
@@ -103,7 +101,8 @@ def PLAYERTHREAD():
 	while running:
 		for e in ENTITIES:
 			m = e.getmove()
-			if running: doMove(e, *m)
+			if running:
+				doMove(e, *m)
 		c.tick(60)
 
 def MAIN():
