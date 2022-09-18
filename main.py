@@ -82,7 +82,7 @@ class Enemy(Entity):
 	def getmove(self):
 		if self.awake:
 			# Pathfind to player
-			if not True in [isinstance(p, Player) for p in ENTITIES]:
+			if True in [isinstance(p, Player) for p in ENTITIES]:
 				player = random.choice([p for p in ENTITIES if isinstance(p, Player)])
 				mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
 				path = pathfind(mat, self.pos, player.pos)
@@ -101,6 +101,7 @@ class Player(Entity):
 		super().__init__(pos)
 		self.maxhealth = 50
 		self.health = 50
+		#self.path = []
 	def draw(self):
 		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
 		pygame.draw.rect(screen, (255, 0, 0), entityrect)
@@ -110,7 +111,19 @@ class Player(Entity):
 		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
 		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
 	def trygetmove(self):
-		if inputkey == pygame.K_UP:
+		global target
+		if target:
+			# Pathfind to target
+			if self.pos == target:
+				target = None
+				return
+			mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
+			path = pathfind(mat, self.pos, target)
+			if path:
+				return path[1]
+			else:
+				return
+		elif inputkey == pygame.K_UP:
 			return [self.pos[0], self.pos[1] - 1]
 		elif inputkey == pygame.K_DOWN:
 			return [self.pos[0], self.pos[1] + 1]
@@ -123,19 +136,21 @@ class Player(Entity):
 			return self.pos
 	def getmove(self):
 		global inputkey
+		global target
 		inputkey = -1
-		r = None
-		while ((not r) or (not BOARD[r[0]][r[1]].canwalk())) and running:
-			r = self.trygetmove()
+		chosenpos = None
+		while ((not chosenpos) or (not BOARD[chosenpos[0]][chosenpos[1]].canwalk())) and running:
+			chosenpos = self.trygetmove()
 			time.sleep(0.01)
-		return r
+		return chosenpos
 
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
 ENTITIES: "list[Entity]" = [Player(random.choice(validspawn)), Enemy(random.choice(validspawn))]
 inputkey = -1
 pygame.key.set_repeat(500, 10)
+target = None
 
-def PLAYERTHREAD():
+def GAMETHREAD():
 	global running
 	def lightrefresh():
 		for playerpos in [e.pos for e in ENTITIES if isinstance(e, Player)]:
@@ -171,7 +186,8 @@ def MAIN():
 	global screen
 	global running
 	global inputkey
-	threading.Thread(target=PLAYERTHREAD).start()
+	global target
+	threading.Thread(target=GAMETHREAD).start()
 	running = True
 	c = pygame.time.Clock()
 	while running:
@@ -183,6 +199,10 @@ def MAIN():
 				screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
 			elif event.type == pygame.KEYDOWN:
 				inputkey = event.key
+			elif event.type == pygame.MOUSEBUTTONDOWN:
+				target = [event.pos[0] // cellsize, event.pos[1] // cellsize]
+				if BOARD[target[0]][target[1]].light == 0:
+					target = None
 		screen.fill(WHITE)
 		# Board
 		for i in range(boardsize[0]):

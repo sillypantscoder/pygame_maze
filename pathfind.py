@@ -20,5 +20,3 @@ def pathfind(board: "list[list[bool]]", frompos: "tuple[int, int]", topos: "tupl
 	# Return the path.
 	if len(path) > 0:
 		return path
-	else:
-		print(f"NO PATH FOUND: {frompos} -> {topos}")
