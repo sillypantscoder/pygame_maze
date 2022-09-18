@@ -80,7 +80,7 @@ def lightrefreshall():
 	for i in range(boardsize[0]):
 		for j in range(boardsize[1]):
 			for player in [e for e in ENTITIES if isinstance(e, Player)]:
-				BOARD[i][j].refreshLight(player)
+				BOARD[i][j].refreshLight()
 
 # ENTITIES
 class Entity:
@@ -205,6 +205,7 @@ class Player(Entity):
 	def getmove(self):
 		global inputkey
 		global clickpos
+		global isprogress
 		inputkey = -1
 		clickpos = None
 		chosenpos = None
@@ -214,6 +215,8 @@ class Player(Entity):
 			if clickpos:
 				self.target = clickpos
 				clickpos = None
+			isprogress = False
+		isprogress = True
 		return chosenpos
 	def doaction(self):
 		next_pos = self.getmove()
@@ -235,6 +238,7 @@ inputkey = -1
 pygame.key.set_repeat(500, 10)
 clickpos = None
 playerspawntime = 0
+isprogress = True
 
 def GAMETHREAD():
 	global running
@@ -274,7 +278,9 @@ def MAIN():
 	global running
 	global inputkey
 	global clickpos
+	global screensize
 	threading.Thread(target=GAMETHREAD).start()
+	progresstime = 0
 	running = True
 	c = pygame.time.Clock()
 	while running:
@@ -307,10 +313,24 @@ def MAIN():
 						screen.blit(overlay, (i * cellsize, j * cellsize))
 					if BOARD[i][j].light == 2:
 						pygame.draw.rect(screen, BOARD[i][j].getColor(), pygame.Rect(i * cellsize, j * cellsize, cellsize, cellsize))
-		# Drw entities
+		# Draw entities
 		for e in ENTITIES:
 			if BOARD[e.pos[0]][e.pos[1]].light == 2:
 				e.draw()
+		# Progress indicator
+		if isprogress:
+			progresstime += 5
+			ind = pygame.Surface((screensize[0] // 10, screensize[1] // 10), pygame.SRCALPHA)
+			ind.fill((0, 0, 0, 0))
+			pygame.draw.circle(ind, (0, 0, 0, 100), (ind.get_width() // 2, ind.get_height() // 2), min(ind.get_width(), ind.get_height()) // 2)
+			pygame.draw.rect(ind, (0, 0, 0, 0), pygame.Rect(0, 0, ind.get_width() // 2, ind.get_height() // 2))
+			pygame.draw.rect(ind, (0, 0, 0, 0), pygame.Rect(ind.get_width() // 2, ind.get_height() // 2, ind.get_width() // 2, ind.get_height() // 2))
+			rot = pygame.transform.rotate(ind, -progresstime)
+			rot_cropped = pygame.Surface((screensize[0] // 10, screensize[1] // 10), pygame.SRCALPHA)
+			rot_cropped.blit(rot, ((screensize[0] // 20) - (rot.get_width() // 2), (screensize[1] // 20) - (rot.get_height() // 2)))
+			screen.blit(rot_cropped, (0, 0))
+		else:
+			progresstime = 0
 		# Flip
 		pygame.display.flip()
 		c.tick(60)
