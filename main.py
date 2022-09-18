@@ -125,21 +125,29 @@ class Enemy(Entity):
 		if not self.awake:
 			i = pygame.image.load("icon-sleep.png")
 			i = pygame.transform.scale(i, (cellsize, cellsize))
-			screen.blit(i, (self.pos[0] * cellsize, self.pos[1] * cellsize))
+			screen.blit(i, ((self.pos[0] + 0.7) * cellsize, (self.pos[1] - 0.7) * cellsize))
 	def getmove(self):
 		if self.awake:
 			# Pathfind to player
 			if True in [isinstance(p, Player) for p in ENTITIES]:
-				player = random.choice([p for p in ENTITIES if isinstance(p, Player)])
 				mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
-				path = pathfind(mat, self.pos, player.pos)
+				closestplayer = min([p for p in ENTITIES if isinstance(p, Player)], key=lambda p: len(pathfind(mat, p.pos, self.pos)))
+				path = pathfind(mat, self.pos, closestplayer.pos)
 				if path and len(path) > 1:
 					return [*path[1]]
 				else:
 					return self.pos
 			else:
-				self.awake = False
-				return self.pos
+				r = random.choice([
+					[self.pos[0] + 1, self.pos[1]],
+					[self.pos[0] - 1, self.pos[1]],
+					[self.pos[0], self.pos[1] + 1],
+					[self.pos[0], self.pos[1] - 1]
+				])
+				if BOARD[r[0]][r[1]].canwalk():
+					return r
+				else:
+					return self.pos
 		else:
 			return self.pos
 	def doaction(self):
@@ -221,13 +229,8 @@ class Player(Entity):
 
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
 ENTITIES: "list[Entity]" = []
-ENTITIES.append(Player(random.choice(validspawn)))
-ENTITIES.append(Player(random.choice(validspawn)))
-ENTITIES.append(Player(random.choice(validspawn)))
-ENTITIES.append(Player(random.choice(validspawn)))
-ENTITIES.append(Player(random.choice(validspawn)))
-ENTITIES.append(Player(random.choice(validspawn)))
-ENTITIES.append(Enemy(random.choice(validspawn)))
+[ENTITIES.append(Player(random.choice(validspawn))) for x in range(1)];
+[ENTITIES.append(Enemy(random.choice(validspawn))) for x in range(20)];
 inputkey = -1
 pygame.key.set_repeat(500, 10)
 clickpos = None
