@@ -51,12 +51,29 @@ BOARD = [
 ]
 lightrange = 10
 
+# get_attack_target determines if a target walking position represents an attack on another entity.
+# If it is, then it will return the attacked entity, otherwise it returns None.
+def get_attack_target(source_entity, target_pos) -> "Entity | None":
+	if BOARD[target_pos[0]][target_pos[1]].canwalk():
+		for e in ENTITIES:
+			if not e == source_entity and e.pos == target_pos:
+				return e
+	return None
+
+def lightrefresh():
+	for playerpos in [e.pos for e in ENTITIES if isinstance(e, Player)]:
+		for i in range(playerpos[0] - lightrange - 1, playerpos[0] + lightrange + 2):
+			for j in range(playerpos[1] - lightrange - 1, playerpos[1] + lightrange + 2):
+				if 0 <= i < boardsize[0] and 0 <= j < boardsize[1]:
+					BOARD[i][j].refreshLight()
+
 # ENTITIES
 class Entity:
 	def __init__(self, pos):
 		self.pos: list = pos
 		self.maxhealth: int = 10
 		self.health: int = 10
+		self.time = max([e.time for e in ENTITIES]) if len(ENTITIES) > 0 else 0
 	def draw(self):
 		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
 		pygame.draw.rect(screen, (0, 255, 255), entityrect)
@@ -67,6 +84,16 @@ class Entity:
 		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
 	def getmove(self):
 		return self.pos
+	def doaction(self):
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 1
+			self.time += 1
+			return
+		else:
+			self.pos = next_pos
+			self.time += 1
 
 class Enemy(Entity):
 	def __init__(self, pos):
@@ -95,13 +122,22 @@ class Enemy(Entity):
 				return self.pos
 		else:
 			return self.pos
+	def doaction(self):
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 1
+			self.time += 1
+			return
+		else:
+			self.pos = next_pos
+			self.time += 1
 
 class Player(Entity):
 	def __init__(self, pos):
 		super().__init__(pos)
 		self.maxhealth = 50
 		self.health = 50
-		#self.path = []
 	def draw(self):
 		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
 		pygame.draw.rect(screen, (255, 0, 0), entityrect)
@@ -119,7 +155,7 @@ class Player(Entity):
 				return
 			mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
 			path = pathfind(mat, self.pos, target)
-			if path:
+			if path and len(path) > 1:
 				return path[1]
 			else:
 				return
@@ -143,8 +179,20 @@ class Player(Entity):
 			chosenpos = self.trygetmove()
 			time.sleep(0.01)
 		return chosenpos
+	def doaction(self):
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 1
+			self.time += 0.5
+			return
+		else:
+			self.pos = next_pos
+			self.time += 1
+			lightrefresh()
 
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
+ENTITIES: "list[Entity]" = []
 ENTITIES: "list[Entity]" = [Player(random.choice(validspawn)), Enemy(random.choice(validspawn))]
 inputkey = -1
 pygame.key.set_repeat(500, 10)
@@ -152,34 +200,13 @@ target = None
 
 def GAMETHREAD():
 	global running
-	def lightrefresh():
-		for playerpos in [e.pos for e in ENTITIES if isinstance(e, Player)]:
-			for i in range(playerpos[0] - lightrange - 1, playerpos[0] + lightrange + 2):
-				for j in range(playerpos[1] - lightrange - 1, playerpos[1] + lightrange + 2):
-					if 0 <= i < boardsize[0] and 0 <= j < boardsize[1]:
-						BOARD[i][j].refreshLight()
-	def doMove(e: Entity, newX, newY):
-		if BOARD[newX][newY].canwalk():
-			# 1. Check for other entities
-			for entity in ENTITIES:
-				if entity.pos == [newX, newY]:
-					entity.health -= 1
-					if isinstance(entity, Enemy):
-						entity.awake = True
-					if entity.health <= 0:
-						ENTITIES.remove(entity)
-					return
-			# 2. Move
-			e.pos = [newX, newY]
-			# 3. Light update
-			lightrefresh()
 	lightrefresh()
 	c = pygame.time.Clock()
 	while running:
-		for e in ENTITIES:
-			m = e.getmove()
-			if running and not m == e.pos:
-				doMove(e, *m)
+		for e in [*ENTITIES]:
+			e.doaction()
+			if e.health <= 0:
+				ENTITIES.remove(e)
 		c.tick(60)
 
 def MAIN():
