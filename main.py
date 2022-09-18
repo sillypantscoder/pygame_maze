@@ -75,6 +75,13 @@ def lightrefresh():
 					BOARD[i][j].refreshLight()
 					doneCells.append([i, j])
 
+def lightrefreshall():
+	if pygame.key.get_pressed()[pygame.K_q]: return
+	for i in range(boardsize[0]):
+		for j in range(boardsize[1]):
+			for player in [e for e in ENTITIES if isinstance(e, Player)]:
+				BOARD[i][j].refreshLight(player)
+
 # ENTITIES
 class Entity:
 	def __init__(self, pos):
@@ -235,6 +242,7 @@ def GAMETHREAD():
 			e.doaction()
 			if e.health <= 0:
 				ENTITIES.remove(e)
+				lightrefreshall()
 			else:
 				e.focused = False
 				# Natural healing
@@ -263,21 +271,25 @@ def MAIN():
 				screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
 			elif event.type == pygame.KEYDOWN:
 				inputkey = event.key
+			elif event.type == pygame.KEYUP:
+				if event.key == pygame.K_q:
+					lightrefreshall()
 			elif event.type == pygame.MOUSEBUTTONDOWN:
 				clickpos = [event.pos[0] // cellsize, event.pos[1] // cellsize]
 				if BOARD[clickpos[0]][clickpos[1]].light == 0:
 					clickpos = None
 		screen.fill(WHITE)
 		# Board
-		for i in range(boardsize[0]):
-			for j in range(boardsize[1]):
-				if BOARD[i][j].light == 1:
-					overlay = pygame.Surface((cellsize, cellsize))
-					overlay.set_alpha(100)
-					overlay.fill(BOARD[i][j].getColor())
-					screen.blit(overlay, (i * cellsize, j * cellsize))
-				if BOARD[i][j].light == 2:
-					pygame.draw.rect(screen, BOARD[i][j].getColor(), pygame.Rect(i * cellsize, j * cellsize, cellsize, cellsize))
+		if not pygame.key.get_pressed()[pygame.K_q]:
+			for i in range(boardsize[0]):
+				for j in range(boardsize[1]):
+					if BOARD[i][j].light == 1:
+						overlay = pygame.Surface((cellsize, cellsize))
+						overlay.set_alpha(100)
+						overlay.fill(BOARD[i][j].getColor())
+						screen.blit(overlay, (i * cellsize, j * cellsize))
+					if BOARD[i][j].light == 2:
+						pygame.draw.rect(screen, BOARD[i][j].getColor(), pygame.Rect(i * cellsize, j * cellsize, cellsize, cellsize))
 		# Drw entities
 		for e in ENTITIES:
 			if BOARD[e.pos[0]][e.pos[1]].light == 2:
