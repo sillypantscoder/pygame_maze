@@ -234,9 +234,11 @@ ENTITIES: "list[Entity]" = []
 inputkey = -1
 pygame.key.set_repeat(500, 10)
 clickpos = None
+playerspawntime = 0
 
 def GAMETHREAD():
 	global running
+	global playerspawntime
 	lightrefresh()
 	c = pygame.time.Clock()
 	while running:
@@ -255,6 +257,16 @@ def GAMETHREAD():
 						e.healtime = 20
 					else:
 						e.healtime -= 1
+		# Spawn player?
+		if playerspawntime == 0:
+			t = random.choice(validspawn)
+			if not get_attack_target(None, t):
+				playerspawntime = 250
+				ENTITIES.append(Player(t))
+				for i in range(3): ENTITIES.append(Enemy(random.choice(validspawn)))
+				lightrefreshall()
+		else:
+			playerspawntime -= 1
 		c.tick(60)
 
 def MAIN():
@@ -279,7 +291,9 @@ def MAIN():
 					lightrefreshall()
 			elif event.type == pygame.MOUSEBUTTONDOWN:
 				clickpos = [event.pos[0] // cellsize, event.pos[1] // cellsize]
-				if BOARD[clickpos[0]][clickpos[1]].light == 0:
+				if clickpos[0] >= boardsize[0] or clickpos[1] >= boardsize[1]:
+					clickpos = None
+				elif BOARD[clickpos[0]][clickpos[1]].light == 0:
 					clickpos = None
 		screen.fill(WHITE)
 		# Board
