@@ -59,6 +59,7 @@ lightrange = 10
 # get_attack_target determines if a target walking position represents an attack on another entity.
 # If it is, then it will return the attacked entity, otherwise it returns None.
 def get_attack_target(source_entity, target_pos) -> "Entity | None":
+	if target_pos == None: return None
 	if BOARD[target_pos[0]][target_pos[1]].canwalk():
 		for e in ENTITIES:
 			if not e == source_entity and e.pos == target_pos:
@@ -205,7 +206,7 @@ class Player(Entity):
 			target.health -= 1
 			self.time += 0.5
 			return
-		else:
+		elif next_pos:
 			self.pos = next_pos
 			self.time += 1
 			lightrefresh()
