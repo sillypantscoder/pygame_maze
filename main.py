@@ -83,6 +83,7 @@ class Entity:
 		self.health: int = 10
 		self.time = max([e.time for e in ENTITIES]) if len(ENTITIES) > 0 else 0
 		self.focused = False
+		self.healtime = 0
 	def draw(self):
 		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
 		pygame.draw.rect(screen, (0, 255, 255), entityrect)
@@ -234,7 +235,15 @@ def GAMETHREAD():
 			e.doaction()
 			if e.health <= 0:
 				ENTITIES.remove(e)
-			e.focused = False
+			else:
+				e.focused = False
+				# Natural healing
+				if e.health < e.maxhealth:
+					if e.healtime == 0:
+						e.health += 1
+						e.healtime = 20
+					else:
+						e.healtime -= 1
 		c.tick(60)
 
 def MAIN():
