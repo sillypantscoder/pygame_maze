@@ -27,21 +27,26 @@ class Cell:
 	def canwalk(self) -> bool:
 		return self.state == "ground"
 	def refreshLight(self):
+		seen = False
 		for playerpos in [p.pos for p in ENTITIES if isinstance(p, Player)]:
 			points = get_line(self.pos, playerpos)
+			isblocked = False
 			for point in points:
 				if not BOARD[point[0]][point[1]].canwalk():
-					self.light = 0 if self.light == 0 else 1
-					return
+					isblocked = True
 			# We have a line of sight to this block
 			if math.dist(self.pos, playerpos) > lightrange:
-				self.light = 0 if self.light == 0 else 1
-				return
+				isblocked = True
+			if not isblocked:
+				seen = True
+		if seen:
 			# We can see this block.
 			self.light = 2
 			for e in [p for p in ENTITIES if isinstance(p, Enemy)]:
 				if random.random() < 0.1 and e.pos == self.pos:
 					e.awake = True
+		else:
+			self.light = 0 if self.light == 0 else 1
 
 cellsize = 10
 boardsize = [*boardgen.boardsize]
@@ -61,11 +66,13 @@ def get_attack_target(source_entity, target_pos) -> "Entity | None":
 	return None
 
 def lightrefresh():
+	doneCells = []
 	for playerpos in [e.pos for e in ENTITIES if isinstance(e, Player)]:
 		for i in range(playerpos[0] - lightrange - 1, playerpos[0] + lightrange + 2):
 			for j in range(playerpos[1] - lightrange - 1, playerpos[1] + lightrange + 2):
-				if 0 <= i < boardsize[0] and 0 <= j < boardsize[1]:
+				if [i, j] not in doneCells and 0 <= i < boardsize[0] and 0 <= j < boardsize[1]:
 					BOARD[i][j].refreshLight()
+					doneCells.append([i, j])
 
 # ENTITIES
 class Entity:
@@ -74,6 +81,7 @@ class Entity:
 		self.maxhealth: int = 10
 		self.health: int = 10
 		self.time = max([e.time for e in ENTITIES]) if len(ENTITIES) > 0 else 0
+		self.focused = False
 	def draw(self):
 		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
 		pygame.draw.rect(screen, (0, 255, 255), entityrect)
@@ -82,6 +90,9 @@ class Entity:
 		barheight = cellsize * 0.7
 		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
 		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
+		# Focus
+		if self.focused:
+			pygame.draw.rect(screen, (255, 255, 0), entityrect, 2)
 	def getmove(self):
 		return self.pos
 	def doaction(self):
@@ -113,8 +124,8 @@ class Enemy(Entity):
 				player = random.choice([p for p in ENTITIES if isinstance(p, Player)])
 				mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
 				path = pathfind(mat, self.pos, player.pos)
-				if path:
-					return path[1]
+				if path and len(path) > 1:
+					return [*path[1]]
 				else:
 					return self.pos
 			else:
@@ -138,6 +149,7 @@ class Player(Entity):
 		super().__init__(pos)
 		self.maxhealth = 50
 		self.health = 50
+		self.target = None
 	def draw(self):
 		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
 		pygame.draw.rect(screen, (255, 0, 0), entityrect)
@@ -146,18 +158,21 @@ class Player(Entity):
 		barheight = cellsize * 0.7
 		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
 		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
+		# Focus
+		if self.focused:
+			pygame.draw.rect(screen, (255, 255, 0), entityrect, 2)
 	def trygetmove(self):
-		global target
-		if target:
+		if self.target:
 			# Pathfind to target
-			if self.pos == target:
-				target = None
+			if self.pos == self.target:
+				self.target = None
 				return
 			mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
-			path = pathfind(mat, self.pos, target)
+			path = pathfind(mat, self.pos, self.target)
 			if path and len(path) > 1:
-				return path[1]
+				return [*path[1]]
 			else:
+				self.target = None
 				return
 		elif inputkey == pygame.K_UP:
 			return [self.pos[0], self.pos[1] - 1]
@@ -172,12 +187,16 @@ class Player(Entity):
 			return self.pos
 	def getmove(self):
 		global inputkey
-		global target
+		global clickpos
 		inputkey = -1
+		clickpos = None
 		chosenpos = None
 		while ((not chosenpos) or (not BOARD[chosenpos[0]][chosenpos[1]].canwalk())) and running:
 			chosenpos = self.trygetmove()
 			time.sleep(0.01)
+			if clickpos:
+				self.target = clickpos
+				clickpos = None
 		return chosenpos
 	def doaction(self):
 		next_pos = self.getmove()
@@ -193,10 +212,16 @@ class Player(Entity):
 
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
 ENTITIES: "list[Entity]" = []
-ENTITIES: "list[Entity]" = [Player(random.choice(validspawn)), Enemy(random.choice(validspawn))]
+ENTITIES.append(Player(random.choice(validspawn)))
+ENTITIES.append(Player(random.choice(validspawn)))
+ENTITIES.append(Player(random.choice(validspawn)))
+ENTITIES.append(Player(random.choice(validspawn)))
+ENTITIES.append(Player(random.choice(validspawn)))
+ENTITIES.append(Player(random.choice(validspawn)))
+ENTITIES.append(Enemy(random.choice(validspawn)))
 inputkey = -1
 pygame.key.set_repeat(500, 10)
-target = None
+clickpos = None
 
 def GAMETHREAD():
 	global running
@@ -204,16 +229,18 @@ def GAMETHREAD():
 	c = pygame.time.Clock()
 	while running:
 		for e in [*ENTITIES]:
+			e.focused = True
 			e.doaction()
 			if e.health <= 0:
 				ENTITIES.remove(e)
+			e.focused = False
 		c.tick(60)
 
 def MAIN():
 	global screen
 	global running
 	global inputkey
-	global target
+	global clickpos
 	threading.Thread(target=GAMETHREAD).start()
 	running = True
 	c = pygame.time.Clock()
@@ -227,9 +254,9 @@ def MAIN():
 			elif event.type == pygame.KEYDOWN:
 				inputkey = event.key
 			elif event.type == pygame.MOUSEBUTTONDOWN:
-				target = [event.pos[0] // cellsize, event.pos[1] // cellsize]
-				if BOARD[target[0]][target[1]].light == 0:
-					target = None
+				clickpos = [event.pos[0] // cellsize, event.pos[1] // cellsize]
+				if BOARD[clickpos[0]][clickpos[1]].light == 0:
+					clickpos = None
 		screen.fill(WHITE)
 		# Board
 		for i in range(boardsize[0]):

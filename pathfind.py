@@ -11,9 +11,7 @@ def pathfind(board: "list[list[bool]]", frompos: "tuple[int, int]", topos: "tupl
 	try:
 		start = grid.node(int(frompos[0]), int(frompos[1]))
 		end = grid.node(int(topos[0]), int(topos[1]))
-	except IndexError:
-		print(f"OUT OF BOUNDS: {frompos} -> {topos}")
-		return None
+	except IndexError: return None
 	# Find the path.
 	finder = AStarFinder(diagonal_movement=DiagonalMovement.never)
 	path, runs = finder.find_path(start, end, grid)
