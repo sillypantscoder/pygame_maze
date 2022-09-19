@@ -7,8 +7,9 @@ from line_points import get_line
 import time
 from pathfind import pathfind
 
+cellsize = 10
 WHITE = (255, 255, 255)
-screensize = [500, 500]
+screensize = [boardgen.boardsize[0] * cellsize, boardgen.boardsize[1] * cellsize]
 screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
 running = True
 
@@ -48,7 +49,6 @@ class Cell:
 		else:
 			self.light = 0 if self.light == 0 else 1
 
-cellsize = 10
 boardsize = [*boardgen.boardsize]
 BOARD = [
 	[Cell([j, i], boardgen.board[i][j]) for i in range(boardsize[0])]
@@ -230,10 +230,23 @@ class Player(Entity):
 			self.time += 1
 			lightrefresh()
 
+class FastPlayer(Player):
+	def doaction(self):
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 1
+			self.time += 0.4
+			return
+		elif next_pos:
+			self.pos = next_pos
+			self.time += 0.1
+			lightrefresh()
+
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
 ENTITIES: "list[Entity]" = []
-[ENTITIES.append(Player(random.choice(validspawn))) for x in range(1)];
-[ENTITIES.append(Enemy(random.choice(validspawn))) for x in range(20)];
+ENTITIES.append(FastPlayer(random.choice(validspawn)))
+[ENTITIES.append(Enemy(random.choice(validspawn))) for x in range(30)];
 inputkey = -1
 pygame.key.set_repeat(500, 10)
 clickpos = None
@@ -246,28 +259,30 @@ def GAMETHREAD():
 	lightrefresh()
 	c = pygame.time.Clock()
 	while running:
-		for e in [*ENTITIES]:
+		# Find list of entities that have lowest time value
+		l = min([e.time for e in ENTITIES])
+		for e in [e for e in ENTITIES if e.time <= l]:
 			e.focused = True
 			e.doaction()
-			if e.health <= 0:
-				ENTITIES.remove(e)
-				lightrefreshall()
-			else:
-				e.focused = False
-				# Natural healing
-				if e.health < e.maxhealth:
-					if e.healtime == 0:
-						e.health += 1
-						e.healtime = 20
-					else:
-						e.healtime -= 1
+			e.focused = False
+			# Natural healing
+			if e.health < e.maxhealth:
+				if e.healtime == 0:
+					e.health += 1
+					e.healtime = 20
+				else:
+					e.healtime -= 1
+			for e in ENTITIES:
+				if e.health <= 0:
+					ENTITIES.remove(e)
+					lightrefreshall()
 		# Spawn player?
 		if playerspawntime == 0:
 			t = random.choice(validspawn)
 			if not get_attack_target(None, t):
 				playerspawntime = 250
 				ENTITIES.append(Player(t))
-				for i in range(3): ENTITIES.append(Enemy(random.choice(validspawn)))
+				for i in range(5): ENTITIES.append(Enemy(random.choice(validspawn)))
 				lightrefreshall()
 		else:
 			playerspawntime -= 1
