@@ -3,8 +3,8 @@ import random
 from math import floor
 
 rooms = []
-boardsize = [80, 80]
-maxroomsize = 10
+boardsize = [100, 100]
+maxroomsize = 15
 minroomsize = 5
 
 def addRoom():
@@ -21,7 +21,7 @@ def addRoom():
 	rooms.append(r)
 
 tries = 0
-while len(rooms) < 10 and tries < 100:
+while len(rooms) < 15 and tries < 1000:
 	addRoom()
 	tries += 1
 
@@ -59,3 +59,37 @@ for prev in range(len(rooms) - 1):
 	nx, ny = (floor(rooms[next].centerx), floor(rooms[next].centery))
 	for i, j in getCorridor((px, py), (nx, ny)):
 		board[i][j] = "ground"
+
+for c in range(boardsize[0]):
+	tx = random.randint(1, boardsize[0] - 2)
+	ty = random.randint(1, boardsize[1] - 2)
+	ncount = 0
+	for cx in [tx - 1, tx, tx + 1]:
+		for cy in [ty - 1, ty, ty + 1]:
+			if board[cx][cy] == "ground":
+				ncount += 1
+	if ncount >= 4:
+		board[tx][ty] = "wall"
+
+# Add intersecting rooms
+introoms = 0
+def addIntersectingRoom():
+	global introoms
+	roomWidth = random.randint(minroomsize, maxroomsize)
+	roomHeight = random.randint(minroomsize, maxroomsize)
+	roomX = random.randint(0, boardsize[0]) - (roomWidth // 2)
+	roomY = random.randint(0, boardsize[1]) - (roomHeight // 2)
+	r = pygame.Rect(roomX, roomY, roomWidth, roomHeight)
+	if not pygame.Rect(0, 0, boardsize[0], boardsize[1]).contains(r):
+		return
+	for room in rooms:
+		if r.colliderect(room):
+			# Build the room!
+			for x in range(r.left, r.right):
+				for y in range(r.top, r.bottom):
+					board[x][y] = "ground"
+			introoms += 1
+			return
+	introoms += 0.05
+while introoms <= 2:
+	addIntersectingRoom()

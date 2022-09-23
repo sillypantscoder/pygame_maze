@@ -1,5 +1,5 @@
 import math
-import pygame
+import webgame as pygame
 import random
 import boardgen
 import threading
@@ -12,6 +12,8 @@ WHITE = (255, 255, 255)
 screensize = [boardgen.boardsize[0] * cellsize, boardgen.boardsize[1] * cellsize]
 screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
 running = True
+pygame.font.init()
+font = pygame.font.SysFont(pygame.font.get_default_font(), 20)
 
 class Cell:
 	def __init__(self, pos, state):
@@ -59,6 +61,8 @@ lightrange = 10
 # get_attack_target determines if a target walking position represents an attack on another entity.
 # If it is, then it will return the attacked entity, otherwise it returns None.
 def get_attack_target(source_entity, target_pos) -> "Entity | None":
+	global status
+	status = "Attack target check"
 	if target_pos == None: return None
 	if BOARD[target_pos[0]][target_pos[1]].canwalk():
 		for e in ENTITIES:
@@ -67,6 +71,7 @@ def get_attack_target(source_entity, target_pos) -> "Entity | None":
 	return None
 
 def lightrefresh():
+	if pygame.key.get_pressed()[pygame.K_q]: return
 	doneCells = []
 	for playerpos in [e.pos for e in ENTITIES if isinstance(e, Player)]:
 		for i in range(playerpos[0] - lightrange - 1, playerpos[0] + lightrange + 2):
@@ -127,6 +132,69 @@ class Enemy(Entity):
 			i = pygame.transform.scale(i, (cellsize, cellsize))
 			screen.blit(i, ((self.pos[0] + 0.7) * cellsize, (self.pos[1] - 0.7) * cellsize))
 	def getmove(self):
+		global status
+		try:
+			status = "Computing enemy movement for Enemy " + str(ENTITIES.index(self))
+		except Exception as e:
+			status = "Error finding enemy index: " + str(e)
+		if self.awake:
+			try:
+				# Pathfind to player
+				if True in [isinstance(p, Player) for p in ENTITIES]:
+					mat = [[BOARD[j][i].canwalk() for j in range(boardsize[1])] for i in range(boardsize[0])]
+					closestplayer = min([p for p in ENTITIES if isinstance(p, Player)], key=lambda p: len(pathfind(mat, p.pos, self.pos)))
+					path = pathfind(mat, self.pos, closestplayer.pos)
+					if path and len(path) > 1:
+						return [*path[1]]
+					else:
+						return self.pos
+				else:
+					r = random.choice([
+						[self.pos[0] + 1, self.pos[1]],
+						[self.pos[0] - 1, self.pos[1]],
+						[self.pos[0], self.pos[1] + 1],
+						[self.pos[0], self.pos[1] - 1]
+					])
+					if 0 <= r[0] < boardsize[0] and 0 <= r[1] < boardsize[1]:
+						if BOARD[r[0]][r[1]].canwalk():
+							return r
+						else:
+							return self.pos
+					else:
+						return self.pos
+			except:
+					return self.pos
+		else:
+				return self.pos
+	def doaction(self):
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 1
+			self.time += 1
+			return
+		else:
+			self.pos = next_pos
+			self.time += 1
+
+class BigEnemy(Enemy):
+	def draw(self):
+		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
+		pygame.draw.rect(screen, (0, 0, 100), entityrect)
+		# Health bar
+		barwidth = cellsize * 2.2
+		barheight = cellsize * 0.7
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
+		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
+		# Focus
+		if self.focused:
+			pygame.draw.rect(screen, (255, 255, 0), entityrect, 2)
+	def getmove(self):
+		global status
+		try:
+			status = "Computing enemy movement for BigEnemy " + str(ENTITIES.index(self))
+		except Exception as e:
+			status = "Error finding enemy index: " + str(e)
 		if self.awake:
 			# Pathfind to player
 			if True in [isinstance(p, Player) for p in ENTITIES]:
@@ -144,8 +212,11 @@ class Enemy(Entity):
 					[self.pos[0], self.pos[1] + 1],
 					[self.pos[0], self.pos[1] - 1]
 				])
-				if BOARD[r[0]][r[1]].canwalk():
-					return r
+				if 0 <= r[0] < boardsize[0] and 0 <= r[1] < boardsize[1]:
+					if BOARD[r[0]][r[1]].canwalk():
+						return r
+					else:
+						return self.pos
 				else:
 					return self.pos
 		else:
@@ -154,12 +225,12 @@ class Enemy(Entity):
 		next_pos = self.getmove()
 		target = get_attack_target(self, next_pos)
 		if target:
-			target.health -= 1
+			target.health -= 5
 			self.time += 1
 			return
 		else:
 			self.pos = next_pos
-			self.time += 1
+			self.time += 0.4
 
 class Player(Entity):
 	def __init__(self, pos):
@@ -219,6 +290,7 @@ class Player(Entity):
 		isprogress = True
 		return chosenpos
 	def doaction(self):
+		global status
 		next_pos = self.getmove()
 		target = get_attack_target(self, next_pos)
 		if target:
@@ -228,61 +300,151 @@ class Player(Entity):
 		elif next_pos:
 			self.pos = next_pos
 			self.time += 1
+			status = "Refreshing light because of player movement"
 			lightrefresh()
+	def __str__(self):
+		return f"Player at {self.pos[0]}, {self.pos[1]}"
 
 class FastPlayer(Player):
+	def draw(self):
+		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
+		pygame.draw.rect(screen, (255, 100, 100), entityrect)
+		# Health bar
+		barwidth = cellsize * 2.2
+		barheight = cellsize * 0.7
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
+		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
+		# Focus
+		if self.focused:
+			pygame.draw.rect(screen, (255, 255, 0), entityrect, 2)
 	def doaction(self):
+		global status
 		next_pos = self.getmove()
 		target = get_attack_target(self, next_pos)
 		if target:
 			target.health -= 1
-			self.time += 0.4
+			self.time += 0.6
 			return
 		elif next_pos:
 			self.pos = next_pos
-			self.time += 0.1
+			self.time += 0.05
+			status = "Refreshing light because of player movement"
 			lightrefresh()
+	def __str__(self):
+		return f"FastPlayer at {self.pos[0]}, {self.pos[1]}"
+
+class SlowPlayer(Player):
+	def draw(self):
+		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
+		pygame.draw.rect(screen, (100, 0, 0), entityrect)
+		# Health bar
+		barwidth = cellsize * 2.2
+		barheight = cellsize * 0.7
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
+		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
+		# Focus
+		if self.focused:
+			pygame.draw.rect(screen, (255, 255, 0), entityrect, 2)
+	def doaction(self):
+		global status
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 20
+			self.time += 1.5
+			return
+		elif next_pos:
+			self.pos = next_pos
+			self.time += 2.2
+			status = "Refreshing light because of player movement"
+			lightrefresh()
+	def __str__(self):
+		return f"SlowPlayer at {self.pos[0]}, {self.pos[1]}"
+
+class SuperPlayer(Player):
+	def draw(self):
+		entityrect = pygame.Rect(self.pos[0] * cellsize, self.pos[1] * cellsize, cellsize, cellsize)
+		pygame.draw.rect(screen, (100, 0, 255), entityrect)
+		# Health bar
+		barwidth = cellsize * 2.2
+		barheight = cellsize * 0.7
+		pygame.draw.rect(screen, (255, 0, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth, barheight))
+		pygame.draw.rect(screen, (0, 255, 0), pygame.Rect(entityrect.centerx - (barwidth // 2), entityrect.top - (barheight * 2), barwidth * (self.health / self.maxhealth), barheight))
+		# Focus
+		if self.focused:
+			pygame.draw.rect(screen, (255, 255, 0), entityrect, 2)
+	def doaction(self):
+		global status
+		next_pos = self.getmove()
+		target = get_attack_target(self, next_pos)
+		if target:
+			target.health -= 20
+			self.time += 0.6
+			return
+		elif next_pos:
+			self.pos = next_pos
+			self.time += 0.01
+			status = "Refreshing light because of player movement"
+			lightrefresh()
+	def __str__(self):
+		return f"SuperPlayer at {self.pos[0]}, {self.pos[1]}"
 
 validspawn = [[x, y] for x in range(boardsize[0]) for y in range(boardsize[1]) if BOARD[x][y].canwalk()]
 ENTITIES: "list[Entity]" = []
 ENTITIES.append(FastPlayer(random.choice(validspawn)))
+ENTITIES.append(SlowPlayer(random.choice(validspawn)))
 [ENTITIES.append(Enemy(random.choice(validspawn))) for x in range(30)];
 inputkey = -1
 pygame.key.set_repeat(500, 10)
 clickpos = None
 playerspawntime = 0
 isprogress = True
+status = ""
 
 def GAMETHREAD():
 	global running
 	global playerspawntime
+	global status
 	lightrefresh()
 	c = pygame.time.Clock()
 	while running:
 		# Find list of entities that have lowest time value
 		l = min([e.time for e in ENTITIES])
-		for e in [e for e in ENTITIES if e.time <= l]:
+		needstick = [e for e in ENTITIES if e.time <= l]
+		random.shuffle(needstick)
+		for e in needstick:
+			status = "Doing action for " + str(e)
 			e.focused = True
 			e.doaction()
-			e.focused = False
 			# Natural healing
+			status = "Natural healing"
 			if e.health < e.maxhealth:
 				if e.healtime == 0:
 					e.health += 1
 					e.healtime = 20
 				else:
 					e.healtime -= 1
-			for e in ENTITIES:
-				if e.health <= 0:
-					ENTITIES.remove(e)
-					lightrefreshall()
+			status = "Entity check"
+			for h in [*ENTITIES]:
+				if h.health <= 0:
+					ENTITIES.remove(h)
+					if isinstance(h, Player):
+						status = "Refreshing all light because of player death"
+						lightrefreshall()
+					status = "Entity check"
+			e.focused = False
 		# Spawn player?
+		status = "New player check"
 		if playerspawntime == 0:
 			t = random.choice(validspawn)
 			if not get_attack_target(None, t):
-				playerspawntime = 250
-				ENTITIES.append(Player(t))
-				for i in range(5): ENTITIES.append(Enemy(random.choice(validspawn)))
+				playerspawntime = 150
+				playertype = random.choices([Player, FastPlayer, SlowPlayer, SuperPlayer], weights=[30, 10, 10, 1], k=1)[0]
+				ENTITIES.append(playertype(t))
+				for i in range(15):
+					enemytype = random.choices([Enemy, BigEnemy], weights=[60, 1], k=1)[0]
+					ENTITIES.append(enemytype(random.choice(validspawn)))
+				status = "Refreshing all light because of new player"
 				lightrefreshall()
 		else:
 			playerspawntime -= 1
@@ -294,11 +456,13 @@ def MAIN():
 	global inputkey
 	global clickpos
 	global screensize
+	global status
 	threading.Thread(target=GAMETHREAD).start()
 	progresstime = 0
 	running = True
 	c = pygame.time.Clock()
 	while running:
+		qkeyreleased = False
 		for event in pygame.event.get():
 			if event.type == pygame.QUIT:
 				running = False
@@ -307,9 +471,12 @@ def MAIN():
 				screen = pygame.display.set_mode(screensize, pygame.RESIZABLE)
 			elif event.type == pygame.KEYDOWN:
 				inputkey = event.key
+				if event.key == pygame.K_a:
+					ENTITIES.append(Enemy(random.choice(validspawn)))
 			elif event.type == pygame.KEYUP:
 				if event.key == pygame.K_q:
-					lightrefreshall()
+					status = "Refreshing all light because of Q key released"
+					qkeyreleased = True
 			elif event.type == pygame.MOUSEBUTTONDOWN:
 				clickpos = [event.pos[0] // cellsize, event.pos[1] // cellsize]
 				if clickpos[0] >= boardsize[0] or clickpos[1] >= boardsize[1]:
@@ -318,7 +485,7 @@ def MAIN():
 					clickpos = None
 		screen.fill(WHITE)
 		# Board
-		if not pygame.key.get_pressed()[pygame.K_q]:
+		if not (pygame.key.get_pressed()[pygame.K_q] or qkeyreleased):
 			for i in range(boardsize[0]):
 				for j in range(boardsize[1]):
 					if BOARD[i][j].light == 1:
@@ -333,7 +500,7 @@ def MAIN():
 			if BOARD[e.pos[0]][e.pos[1]].light == 2:
 				e.draw()
 		# Progress indicator
-		if isprogress:
+		if isprogress or qkeyreleased:
 			progresstime += 5
 			ind = pygame.Surface((screensize[0] // 10, screensize[1] // 10), pygame.SRCALPHA)
 			ind.fill((0, 0, 0, 0))
@@ -344,10 +511,14 @@ def MAIN():
 			rot_cropped = pygame.Surface((screensize[0] // 10, screensize[1] // 10), pygame.SRCALPHA)
 			rot_cropped.blit(rot, ((screensize[0] // 20) - (rot.get_width() // 2), (screensize[1] // 20) - (rot.get_height() // 2)))
 			screen.blit(rot_cropped, (0, 0))
+			# Status
+			r = font.render(status, True, (0, 0, 0), (255, 255, 255))
+			screen.blit(r, (rot_cropped.get_width(), 0))
 		else:
 			progresstime = 0
 		# Flip
 		pygame.display.flip()
 		c.tick(60)
+		if qkeyreleased: lightrefreshall()
 
 MAIN()
